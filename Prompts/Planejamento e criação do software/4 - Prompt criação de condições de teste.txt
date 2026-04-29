@@ -1,0 +1,24 @@
+
+Objetivo
+Construir tabelas de condições de teste para cada uma das User Stories.
+
+Contexto
+- As tabelas de condições de teste estão no documento "Condições de Teste.txt"
+- As user stories estão no arquivo "README.md"
+- Condição de teste é definida como "Um aspecto testável de um componente ou sistema que se destina a ser testado."
+
+Regras
+- Siga a mesma linha de raciocínio que você encontrar no exemplo de tabela de condições de testes contida no arquivo "Condições de Teste.txt"
+- Não confunda casos de teste com condições de teste. Casos são detalhados, condições são mais genéricas, vide exemplo do arquivo "Condições de Teste.txt"
+- Casos são detalhados, condições de teste são mais genéricas, por exemplo: a regra de negócios "Deve ser possível filtrar os agendamentos por período (ex: dia, semana, mês) e por status." geraria uma condição de teste "Filtrar dados com base nos filtros disponíveis" ao invés de muitas condições de teste como "Filtrar dados por dia", "Filtrar dados por semana", "Filtrar dados por mês", etc. Condições de teste são mais abstratas e casos de teste são mais específicos. Não gere casos de teste, mas sim, condições de teste.
+
+Exemplo
+O arquivo "Condições de Teste.txt" é um exemplo de como espero que as condições sejam criadas. Ele foi baseado na Funcionalidade #1 do arquivo README.md.
+
+Formato
+Tabelas de condições de teste para cada user story.
+
+
+
+
+

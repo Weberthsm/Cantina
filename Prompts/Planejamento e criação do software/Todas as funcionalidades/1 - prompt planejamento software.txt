@@ -1,0 +1,51 @@
+
+Ideia: um software de gestão de reservas de marmitas onde clientes podem agendar refeições antecipadamente,
+ respeitando regras como limite diário, horário de corte, quantidade máxima por pessoa e disponibilidade de estoque.
+
+
+Funcionalidades:
+
+1 - Cadastro de clientes(Cliente pode se cadastrar e atualizar seus dados, exceto CPF)
+2 - login de usuario
+3 - Cadastro de reservas
+4 - Cancelamento de reservas pelo cliente
+5 - consultar reservas
+6 - Marcar como entregue pelo administrador
+7 - Cancelamento de reservas pelo administrador
+8 - Cadastro de produtos
+9 - Cadastro e atualização de cadastro de pessoas pelo administrador
+10 - Vinculo de pessoas que podem operar o caixa e definição das ações que podem realizar no caixa (Fundo troco inical,suprimento, sangria, estorno, ver movimentações realizadas, fechar caixa)
+11 - Gerenciamento de caixa para controlar o pagamento(Dinheiro, cartão crédito, cartão de débito, pix)
+
+
+1) Objetivos
+1.1 - Ter um plano completo e detalhado
+2.2 - Ao final do plano, criar uma user story para cada funcionalidade do meu Software de gestão de reserva de refeições.
+
+2) Contexto
+- Uma História de Usuário é a prática ágil mais utilizada para capturar necessidades e requisitos e descrever os Itens do Backlog do Produto. É ótimo usar o modelo de História de Usuário: Como <um usuário>, eu quero <funcionalidade>, para que <problema a ser resolvido, necessidade> + Regras de negócio. Use o principio INVEST.
+- As seguir estão as funcionalidades que farão parte do meu software: 1) Cliente se cadastrar 2) Login de usuário 3) cadastro de reservas 4) cancelamento de reservas pelo cliente 5) Consultar reservas por data 6) Marcar como entregue 7) Cancelamento de reservas pelo administrador
+
+3) Regras
+- Gere apenas as user stories e implemente regras de negócio para cada uma das user stories
+
+4) Exemplo
+Funcionalidade: Cadastro de reservas
+
+Como cliente
+Quero reservar marmitas para uma data
+Para garantir minha refeição antecipadamente
+
+
+5) Formato
+1.1 - plano gravado
+1.2 - Lista de User Stories.
+
+
+
+
+
+
+
+
+

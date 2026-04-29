@@ -1,0 +1,15 @@
+1. Objetivo
+- Implementar a automação de testes de API REST usando como base o Swagger e a descrição das funcionalidades da API.
+
+2. Contexto
+- Swagger está descrito no arquivo "swagger.json"
+- As funcionalidades estão descritas no arquivo "README.md"
+- A API está rodando no servidor "http://localhost:3000"
+
+3. Regras
+- Você deve usar as bibliotecas mocha, chai, supertest e mochawesome para a criação dos scripts de teste de API Rest
+- Você deve criar uma pasta "test" na raiz do projeto e separar os testes a partir de pastas com nome das funcionalidades
+- Você deve separar os dados de teste em uma pasta chamada "fixtures" para implementar Data Driven Testing
+- Você deve usar a biblioteca dotenv para isolar dados como o "baseURL" e outros que possam ser depenedentes do ambiente atual
+- Você deve criar comandos de execução para a execução dos testes com e sem geração de relatórios HTML
+- Você deve usar hooks para reaproveitar código comum aos testes como é o caso da obtenção de token JWT
