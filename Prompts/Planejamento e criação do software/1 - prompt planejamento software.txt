@@ -6,7 +6,7 @@ Ideia: um software de gestão de reservas de marmitas onde clientes podem agenda
 Funcionalidades:
 
 1 - Cadastro de clientes(Cliente pode se cadastrar e atualizar seus dados, exceto CPF)
-2 - login de usuario
+2 - login e recuperação de conta de usuario
 3 - Cadastro de reservas
 4 - cancelamento de reservas pelo cliente até o horário de corte
 5 - consultar reservas
@@ -33,22 +33,9 @@ Para garantir minha refeição antecipadamente
 
 
 5) Formato
+
 Lista de User Stories.
 
-{
-  "name": "Rodrigo Nathan Rodrigues",
-  "cpf_cnpj": "137.208.242-50",
-  "phones": [
-    "(83) 2624-4409", "(83) 99965-0024"
-  ],
-  "cep": "58309-624",
-  "state": "pb",
-  "city": "Bayeux",
-  "logradouro": "Rua São Mateus",
-  "numero": "927",
-  "active": true,
-  "typePessoa": "Física"
-}
 
 
 

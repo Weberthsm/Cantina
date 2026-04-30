@@ -1,0 +1,681 @@
+openapi: 3.0.3
+info:
+  title: Cantina API
+  description: |
+    API REST do sistema de reserva de marmitas (Cantina).
+
+    Permite que clientes se cadastrem, façam login com JWT, reservem refeições
+    (almoço/jantar) com regras de estoque, limite diário, horário de corte
+    e cancelamento, além de funções administrativas para entregar e cancelar
+    reservas com motivo.
+
+    **Autenticação:** Todos os endpoints exceto os de `/auth/*` exigem header
+    `Authorization: Bearer <token>` obtido em `POST /auth/login`.
+  version: 1.0.0
+  contact:
+    name: Weberth Machado
+servers:
+  - url: http://localhost:3000
+    description: Ambiente local
+tags:
+  - name: Auth
+    description: Cadastro, login e recuperação de senha
+  - name: Users
+    description: Perfil do usuário autenticado
+  - name: Reservations
+    description: Reservas de marmitas
+  - name: Admin
+    description: Operações administrativas
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: ValidationError
+        message:
+          type: string
+          example: E-mail em formato inválido.
+        details:
+          type: object
+          nullable: true
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        cpf:
+          type: string
+          nullable: true
+          example: "12345678900"
+        phone:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [client, admin]
+        failedLoginAttempts:
+          type: integer
+        isBlocked:
+          type: boolean
+        isEmailConfirmed:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+    RegisterRequest:
+      type: object
+      required: [name, email, password]
+      properties:
+        name:
+          type: string
+          example: João da Silva
+        email:
+          type: string
+          format: email
+          example: joao@example.com
+        password:
+          type: string
+          minLength: 6
+          example: "senha123"
+    RegisterResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+        confirmationToken:
+          type: string
+          description: Em produção, enviado por e-mail. Em desenvolvimento é retornado para facilitar testes.
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: cliente@cantina.com
+        password:
+          type: string
+          example: "Cliente@123"
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT a usar em Authorization Bearer.
+        user:
+          $ref: '#/components/schemas/User'
+    ForgotPasswordRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+    ForgotPasswordResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        sent:
+          type: boolean
+        recoveryToken:
+          type: string
+          description: Apenas em desenvolvimento.
+    ResetPasswordRequest:
+      type: object
+      required: [token, newPassword]
+      properties:
+        token:
+          type: string
+        newPassword:
+          type: string
+          minLength: 6
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        cpf:
+          type: string
+          example: "12345678900"
+        phone:
+          type: string
+        address:
+          type: string
+    Reservation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date
+          example: "2026-05-01"
+        mealType:
+          type: string
+          enum: [almoco, jantar]
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+          description: Quantidade de marmitas dessa refeição.
+          example: 2
+        status:
+          type: string
+          enum: [ativa, cancelada, entregue]
+        createdAt:
+          type: string
+          format: date-time
+        cancelledAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancelledBy:
+          type: string
+          format: uuid
+          nullable: true
+        cancelReason:
+          type: string
+          nullable: true
+        deliveredAt:
+          type: string
+          format: date-time
+          nullable: true
+        deliveredBy:
+          type: string
+          format: uuid
+          nullable: true
+    ReservationCreateRequest:
+      type: object
+      required: [date, mealType]
+      properties:
+        date:
+          type: string
+          format: date
+          example: "2026-05-01"
+        mealType:
+          type: string
+          enum: [almoco, jantar]
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+          description: |
+            Quantidade de marmitas. Se omitido, vale 1. A soma das marmitas
+            ativas do usuário naquele dia (incluindo esta) não pode passar do
+            limite diário por pessoa (padrão 5).
+          example: 2
+    AdminCancelRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          example: "Cantina fechada por evento."
+    CancellationHistoryEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        reservationId:
+          type: string
+        cancelledBy:
+          type: string
+        cancelledByRole:
+          type: string
+          enum: [client, admin]
+        reason:
+          type: string
+        cancelledAt:
+          type: string
+          format: date-time
+    MealAvailability:
+      type: object
+      properties:
+        stock:
+          type: integer
+          description: Capacidade máxima daquela refeição naquele dia.
+          example: 50
+        used:
+          type: integer
+          description: Reservas ativas já consumidas.
+          example: 27
+        available:
+          type: integer
+          description: Quantidade ainda disponível (stock - used, mínimo 0).
+          example: 23
+        cutoffHour:
+          type: integer
+          description: Hora de corte (0-23) configurada para essa refeição no backend.
+          example: 10
+    AvailabilityResponse:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+          example: "2026-05-01"
+        almoco:
+          $ref: '#/components/schemas/MealAvailability'
+        jantar:
+          $ref: '#/components/schemas/MealAvailability'
+  responses:
+    BadRequest:
+      description: Requisição inválida (validação ou regra de negócio).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Token ausente, inválido ou credenciais incorretas.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Operação não permitida para o perfil atual.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Recurso não encontrado.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Conflito de regra (estoque, duplicidade, status).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Locked:
+      description: Usuário bloqueado por excesso de tentativas.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalServerError:
+      description: Erro inesperado.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+paths:
+  /:
+    get:
+      tags: [Auth]
+      summary: Metadados da API
+      responses:
+        '200':
+          description: Informações da API.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name: { type: string }
+                  version: { type: string }
+                  docs: { type: string }
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Cadastra um novo cliente
+      description: |
+        Regras: nome, e-mail e senha (mínimo 6 caracteres). E-mail é único e deve
+        estar em formato válido. O cliente precisa confirmar o e-mail antes de
+        fazer login.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Usuário cadastrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalServerError' }
+  /auth/confirm-email/{token}:
+    get:
+      tags: [Auth]
+      summary: Confirma o e-mail do usuário
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: E-mail confirmado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Realiza login e retorna JWT
+      description: Bloqueia o usuário após 5 tentativas inválidas consecutivas.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login efetuado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '423': { $ref: '#/components/responses/Locked' }
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Solicita recuperação de senha
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+      responses:
+        '200':
+          description: Token de recuperação gerado (em dev é retornado na resposta).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForgotPasswordResponse'
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Redefine a senha usando token de recuperação
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '200':
+          description: Senha redefinida.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  reset: { type: boolean }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Retorna o perfil do usuário autenticado
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Perfil do usuário.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    patch:
+      tags: [Users]
+      summary: Atualiza dados do perfil (nome, cpf, telefone, endereço)
+      description: Necessário para que o usuário possa criar reservas.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Perfil atualizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /reservations:
+    post:
+      tags: [Reservations]
+      summary: Cria uma nova reserva para o usuário autenticado
+      description: |
+        Regras: máximo 5 reservas por dia, 1 reserva por refeição (almoço, jantar)
+        no dia, horário de corte por refeição (almoço até 10h, jantar até 16h por
+        padrão), estoque diário por refeição (50 almoços e 50 jantares por padrão),
+        sem reservas para datas passadas. Exige nome, cpf, telefone e endereço no perfil.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationCreateRequest'
+      responses:
+        '201':
+          description: Reserva criada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    get:
+      tags: [Reservations]
+      summary: Lista reservas do usuário com filtro por intervalo
+      description: |
+        Por padrão, retorna apenas reservas do usuário autenticado.
+        Administradores podem passar `all=true` para listar todas.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: from
+          schema: { type: string, format: date }
+          description: Data inicial (YYYY-MM-DD)
+        - in: query
+          name: to
+          schema: { type: string, format: date }
+          description: Data final (YYYY-MM-DD)
+        - in: query
+          name: all
+          schema: { type: boolean }
+          description: Se "true" e usuário for admin, retorna todas as reservas.
+      responses:
+        '200':
+          description: Lista de reservas ordenadas por data.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Reservation'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /reservations/availability:
+    get:
+      tags: [Reservations]
+      summary: Disponibilidade de marmitas em uma data
+      description: |
+        Retorna o estoque, o usado e o disponível para cada tipo de refeição na
+        data informada. Reservas canceladas e entregues não contam contra o estoque.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: date
+          required: true
+          schema: { type: string, format: date }
+          description: Data a consultar (YYYY-MM-DD).
+      responses:
+        '200':
+          description: Disponibilidade retornada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityResponse'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /reservations/{id}:
+    get:
+      tags: [Reservations]
+      summary: Detalhe de uma reserva
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Reserva encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Reservations]
+      summary: Cancelamento pelo cliente (apenas reservas próprias antes do corte)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Reserva cancelada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /reservations/{id}/deliver:
+    patch:
+      tags: [Admin]
+      summary: Marca reserva como entregue (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Reserva entregue.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /reservations/{id}/admin-cancel:
+    patch:
+      tags: [Admin]
+      summary: Cancelamento de reserva pelo administrador (com motivo)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminCancelRequest'
+      responses:
+        '200':
+          description: Reserva cancelada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /reservations/history:
+    get:
+      tags: [Admin]
+      summary: Histórico de cancelamentos (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: reservationId
+          schema: { type: string, format: uuid }
+          description: Se informado, filtra pelo id da reserva.
+      responses:
+        '200':
+          description: Histórico de cancelamentos.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CancellationHistoryEntry'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }

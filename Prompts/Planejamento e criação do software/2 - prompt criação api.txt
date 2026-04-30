@@ -6,7 +6,6 @@ Contexto
 
 Regras
 
-- implementar apenas a funcionalidade e regras referente à user story 2. Cadastro de reservas
 
 - Não me pergunte nada, só faça.
 - A documentação da API deve ser feita com Swagger, em forma de arquivo, crie esse arquivo em uma pasta de recursos. O swagger precisa descrever o modelo JSON da resposta de cada endpoint com base na forma que API for implementada. O Swagger também deve contemplar os status code de erro que serão implementados na API.

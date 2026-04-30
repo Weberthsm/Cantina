@@ -1,0 +1,10 @@
+## US03 — Cadastro de Tarefas
+
+| ID | Condição | Resultado Esperado | Camada |
+|---:|---|---|---|
+| 1 | Impedir cadastro sem título ou apenas com espaços | Não realizar o cadastro | API |
+| 2 | Permitir cadastro com título válido | Realizar cadastro com sucesso | API |
+| 3 | Aceitar dados opcionais (descrição, data prevista) quando informados | Registrar tarefa com todos os dados válidos | API |
+| 4 | Permitir cadastro apenas com obrigatórios válidos | Realizar cadastro com sucesso | API |
+| 5 | Rejeitar data prevista anterior à data atual | Não realizar o cadastro | API |
+| 6 | Associar tarefa ao usuário autenticado | Registrar vínculo correto criador⇄tarefa | API |

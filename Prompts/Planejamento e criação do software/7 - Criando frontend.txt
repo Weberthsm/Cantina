@@ -1,0 +1,13 @@
+Objetivo
+Criar uma Aplicação Web para gestão de reservas de marmitas/refeições.
+
+Contexto
+A aplicação Web será baseada na API gestão de compras pessoais de supermercado que está definida no Swagger file armazenado em resources/swagger.yaml
+A API estará rodando em http://localhost:3000/
+
+Regras
+Apenas execute o que eu te pedir, não me pergunte nada.
+Utilize vue3 para o frontend, use Tailwind para estilização.
+Configure mensagens de erro para quando a API retornar falhas (fora da faixa de status code 200)
+Use as melhores práticas de ui/ux
+Defina uma arquiterura escalável
