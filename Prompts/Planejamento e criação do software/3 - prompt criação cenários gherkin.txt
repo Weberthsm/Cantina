@@ -1,0 +1,81 @@
+Objetivo
+- Adicionar, para cada User Story do sistema de reserva de marmitas, os Critérios de Aceitação no formato Gherkin (estilo declarativo).
+
+Contexto
+- As User Stories estão no arquivo "README.md", numeradas de 1 a 14, com seu respectivo bloco "Regras de negócio".
+- Gherkin é a linguagem em que escrevemos os critérios de aceitação. Sempre usar o estilo declarativo: descrever o que o usuário do negócio percebe, não como a UI ou a API se comporta.
+- Estrutura básica de um cenário:
+
+    Cenário: <título descritivo do comportamento>
+      Dado que <pré-condição ou estado inicial>
+      Quando <ação de negócio executada>
+      Então <resultado observável>
+      E <resultado adicional, se houver>
+
+- Regras de redação:
+    - Um único "Quando" por cenário. Se aparecem dois, normalmente é um cenário disfarçado de outro.
+    - O "Então" descreve resultado visível para o usuário do negócio, não estado interno do sistema.
+    - Mensagens entre aspas (ex.: "Documento inválido") viram parte do contrato com UX.
+    - Gherkin não substitui a Regra de Negócio — ele a exemplifica em um caso concreto.
+- Estilo declarativo é o único que sobrevive a redesign de UI, troca de framework e versionamento de API. O cenário em texto é um só; o que muda é o binding técnico (backend chama API; frontend E2E navega na UI).
+- Cobertura mínima por User Story:
+    - 1 happy path (caminho principal de sucesso).
+    - 1 cenário de exceção por Regra de Negócio relevante (validação, duplicidade, ausência de campo obrigatório, regras de estado, etc.).
+    - 1 cenário de borda quando aplicável (limites de tamanho, datas, expiração, etc.).
+- Esquema do Cenário (Scenario Outline) com tabela de Exemplos deve ser usado quando o mesmo comportamento se repete com dados diferentes (validações por país, enumerações, combinações tipo × valor × resultado). Não usar quando o comportamento muda entre os casos, quando há apenas 2 casos ou quando a tabela teria mais de 10 colunas.
+- Boa prática híbrida: manter o cenário narrativo principal antes do Esquema. A narrativa serve como ilustração legível para PO e UX; o Esquema cobre a matriz completa para QA.
+
+Regras
+- Apenas crie os Cenários Gherkin para cada User Story. Não altere outras partes do README sem autorização.
+- Adicione um bloco "Critérios de Aceitação (Gherkin):" logo após o bloco "Regras de negócio:" de cada User Story, dentro de um bloco de código ```gherkin.
+- Use exclusivamente o estilo declarativo. Não escreva passos imperativos ligados à UI ("clico em", "preencho o campo X") nem técnicos ligados à API ("faço POST em /endpoint", "recebo HTTP 422").
+- Cada cenário deve ter um único "Quando".
+- Quando uma mensagem de erro for relevante, replicar literalmente o texto entre aspas ("Credenciais inválidas.", "E-mail já cadastrado.", etc.) para que sirva como contrato de UX.
+- Não gere casos de teste detalhados; o objetivo é o critério de aceitação como exemplo concreto da regra de negócio.
+
+Exemplo
+- Veja o item 3.2 da especificação acima ("Cadastro com CPF inválido"). Estilo desejado:
+
+    Cenário: Cadastro com CPF inválido
+      Quando cadastro uma pessoa informando um CPF inválido
+      Então o cadastro é rejeitado
+      E vejo a mensagem "Documento inválido"
+
+- Exemplo de Esquema do Cenário (use só quando aplicável):
+
+    Esquema do Cenário: Validação de documento por país
+      Quando cadastro uma pessoa do tipo <tipo_pessoa> com documento "<tipo_doc>" e número "<numero>"
+      Então o cadastro <resultado>
+
+      Exemplos:
+        | tipo_pessoa | tipo_doc | numero              | resultado                                       |
+        | física      | CPF      | 529.982.247-25      | é aceito                                        |
+        | física      | CPF      | 111.111.111-11      | é rejeitado com a mensagem "Documento inválido" |
+
+Formato
+- Para cada User Story do README, inserir, logo após "Regras de negócio:", um bloco no formato:
+
+    **Critérios de Aceitação (Gherkin):**
+
+    ```gherkin
+    Cenário: <happy path>
+      Dado que <pré-condição>
+      Quando <ação de negócio>
+      Então <resultado observável>
+
+    Cenário: <exceção 1 — ligada à regra de negócio relevante>
+      Quando <ação que viola a regra>
+      Então <rejeição ou desvio>
+      E vejo a mensagem "<mensagem visível>"
+
+    Cenário: <exceção 2 — ligada a outra regra relevante>
+      ...
+
+    Esquema do Cenário: <quando há matriz de combinações>
+      Quando <ação parametrizada>
+      Então <resultado parametrizado>
+
+      Exemplos:
+        | parametro_1 | parametro_2 | resultado |
+        | ...         | ...         | ...       |
+    ```

@@ -1,0 +1,239 @@
+# Condições de Teste — Cantina
+
+Tabelas de condições de teste para cada User Story descrita no `README.md`. Numeração reiniciada por US (CT01, CT02, …). Camada indica onde o teste é mais apropriado: **API** (regra de negócio/back) ou **Web** (UI/comportamento de tela).
+
+---
+
+## US01 — Login de usuário
+
+| ID | Condição | Resultado Esperado | Camada |
+|---:|---|---|---|
+| 1 | Validar campos obrigatórios (e-mail e senha) | Não realizar o login | API |
+| 2 | Permitir login com credenciais válidas | Autenticar e retornar token JWT | API |
+| 3 | Rejeitar credenciais inválidas | Não autenticar e mensagem genérica de erro | API |
+| 4 | Bloquear usuário após número máximo de tentativas inválidas consecutivas | Marcar conta como bloqueada e impedir novas tentativas | API |
+| 5 | Impedir login enquanto o e-mail não estiver confirmado | Rejeitar autenticação | API |
+| 6 | Impedir login de usuário bloqueado | Rejeitar autenticação | API |
+| 7 | Zerar contador de tentativas após login bem-sucedido | Permitir novas tentativas sem bloqueio residual | API |
+| 8 | Apresentar feedback visual de erro/credenciais inválidas | Exibir mensagem clara ao usuário | Web |
+| 9 | Indicar estado de carregamento no botão durante a autenticação | Botão desabilitado e em estado "Aguarde…" | Web |
+
+---
+
+## US02 — Cadastro de reservas
+
+| ID | Condição | Resultado Esperado | Camada |
+|---:|---|---|---|
+| 1 | Validar campos obrigatórios (data e tipo de refeição) | Não realizar o cadastro | API |
+| 2 | Exigir perfil completo (nome, CPF, telefone, endereço) antes de reservar | Não realizar o cadastro e retornar campos faltantes | API |
+| 3 | Aceitar quantidade opcional como inteiro ≥ 1 (padrão 1) | Realizar cadastro com a quantidade informada | API |
+| 4 | Rejeitar quantidade inválida (zero, negativa, decimal, não-inteiro) | Não realizar o cadastro | API |
+| 5 | Rejeitar reserva para data passada | Não realizar o cadastro | API |
+| 6 | Respeitar horário de corte específico de cada refeição no dia atual | Não realizar o cadastro após o corte | API |
+| 7 | Respeitar limite diário de marmitas por usuário considerando a soma das quantidades | Não realizar o cadastro quando ultrapassa o limite | API |
+| 8 | Impedir mais de uma reserva ativa da mesma refeição no dia para o mesmo usuário | Não realizar o cadastro | API |
+| 9 | Validar disponibilidade de estoque por refeição comparando quantidades | Não realizar o cadastro quando estoque insuficiente | API |
+| 10 | Vincular toda reserva criada ao usuário autenticado | Reserva associada ao usuário autenticado | API |
+| 11 | Persistir o campo quantidade na reserva criada | Reserva contém o campo `quantity` | API |
+| 12 | Atualizar disponibilidade exibida ao mudar a data | Painéis e badges refletem novos números | Web |
+| 13 | Limitar o seletor de quantidade ao mínimo entre estoque restante e orçamento diário do usuário | Stepper respeita o teto dinâmico | Web |
+| 14 | Indicar visualmente o estado da refeição (disponível, quase esgotado, esgotado) | Badge colorido correto em cada opção | Web |
+| 15 | Desabilitar refeição esgotada e o botão de submissão | Usuário não consegue selecionar/submeter | Web |
+
+---
+
+## US03 — Cancelamento de reservas (cliente)
+
+| ID | Condição | Resultado Esperado | Camada |
+|---:|---|---|---|
+| 1 | Permitir cancelamento somente pelo dono da reserva | Cancelamento bem-sucedido | API |
+| 2 | Rejeitar cancelamento de reserva pertencente a outro usuário | Não realizar o cancelamento | API |
+| 3 | Rejeitar cancelamento após o horário de corte da refeição no dia da reserva | Não realizar o cancelamento | API |
+| 4 | Rejeitar cancelamento de reserva já entregue | Não realizar o cancelamento | API |
+| 5 | Rejeitar cancelamento de reserva já cancelada | Não realizar o cancelamento | API |
+| 6 | Atualizar disponibilidade após cancelamento (estoque liberado) | `used` decresce conforme quantidade cancelada | API |
+| 7 | Registrar cancelamento no histórico com autor, papel e data | Entrada de histórico criada | API |
+| 8 | Exigir confirmação visual antes de cancelar | Cancelamento só ocorre após confirmação explícita | Web |
+
+---
+
+## US04 — Consultar reservas por data
+
+| ID | Condição | Resultado Esperado | Camada |
+|---:|---|---|---|
+| 1 | Listar somente reservas próprias para clientes | Resultado restrito ao usuário autenticado | API |
+| 2 | Aceitar filtro por intervalo de datas | Resultado limitado ao intervalo informado | API |
+| 3 | Validar formato dos parâmetros de data | Não retornar resultados quando formato inválido | API |
+| 4 | Ordenar resultados por data ascendente | Lista ordenada cronologicamente | API |
+| 5 | Exibir status atual (ativa, cancelada, entregue) em cada reserva | Status visível na resposta e na UI | API |
+| 6 | Apresentar empty state amigável quando não houver resultados | Mensagem orientadora com call-to-action | Web |
+
+---
+
+## US05 — Marcar como entregue (administrador)
+
+| ID | Condição | Resultado Esperado | Camada |
+|---:|---|---|---|
+| 1 | Permitir operação somente para perfil administrador | Cliente comum recebe acesso negado | API |
+| 2 | Permitir somente para reservas com status "ativa" | Reservas canceladas/entregues não são alteradas | API |
+| 3 | Bloquear novas alterações na reserva após a entrega | Reserva entregue passa a ser imutável | API |
+| 4 | Registrar data/hora e responsável pela entrega | Reserva contém metadados de entrega | API |
+| 5 | Exigir confirmação visual antes de marcar como entregue | Operação só ocorre após confirmação explícita | Web |
+
+---
+
+## US06 — Cancelamento pelo administrador
+
+| ID | Condição | Resultado Esperado | Camada |
+|---:|---|---|---|
+| 1 | Permitir operação somente para perfil administrador | Cliente comum recebe acesso negado | API |
+| 2 | Exigir motivo (não vazio) na requisição | Não realizar o cancelamento sem motivo | API |
+| 3 | Aceitar cancelamento mesmo após o horário de corte | Cancelamento bem-sucedido fora do corte | API |
+| 4 | Rejeitar cancelamento de reserva já entregue | Não realizar o cancelamento | API |
+| 5 | Registrar motivo, autor e papel no histórico | Entrada de histórico contém os dados | API |
+| 6 | Notificar o cliente sobre o cancelamento | Notificação disparada (e-mail/log) | API |
+| 7 | Exigir motivo no formulário antes de submeter | Botão de confirmar permanece desabilitado sem motivo | Web |
+
+---
+
+## US07 — Cadastro de cliente
+
+| ID | Condição | Resultado Esperado | Camada |
+|---:|---|---|---|
+| 1 | Validar campos obrigatórios (nome, e-mail, senha) | Não realizar o cadastro | API |
+| 2 | Validar formato de e-mail | Não realizar o cadastro | API |
+| 3 | Validar tamanho mínimo da senha | Não realizar o cadastro | API |
+| 4 | Garantir unicidade de e-mail no sistema | Não permitir cadastro duplicado | API |
+| 5 | Armazenar senha de forma segura (criptografada) | Hash persistido, sem retorno em respostas | API |
+| 6 | Gerar token de confirmação para o e-mail no cadastro | Token disponibilizado para confirmação | API |
+| 7 | Impedir login enquanto o e-mail não estiver confirmado | Login rejeitado | API |
+| 8 | Apresentar feedback visual para erros de validação | Mensagem por campo no formulário | Web |
+
+---
+
+## US08 — Confirmação de cadastro por e-mail
+
+| ID | Condição | Resultado Esperado | Camada |
+|---:|---|---|---|
+| 1 | Aceitar token de confirmação válido | Conta passa a estar confirmada | API |
+| 2 | Rejeitar token inválido | Não confirmar conta | API |
+| 3 | Invalidar o token após uso bem-sucedido | Tentativa de reuso é rejeitada | API |
+| 4 | Indicar visualmente o sucesso da confirmação | Feedback positivo ao usuário | Web |
+
+---
+
+## US09 — Recuperação de senha
+
+| ID | Condição | Resultado Esperado | Camada |
+|---:|---|---|---|
+| 1 | Gerar token de recuperação para e-mail cadastrado | Token criado e enviado | API |
+| 2 | Responder de forma silenciosa para e-mail não cadastrado | Mesma resposta de sucesso, sem vazamento | API |
+| 3 | Respeitar tempo de expiração do token de recuperação | Token expirado é rejeitado | API |
+| 4 | Validar tamanho mínimo da nova senha | Não permitir reset com senha curta | API |
+| 5 | Invalidar token após reset bem-sucedido | Reuso do mesmo token é rejeitado | API |
+| 6 | Desbloquear usuário após reset bem-sucedido | Tentativas anteriores zeradas e bloqueio removido | API |
+| 7 | Apresentar UI de solicitação e redefinição com feedback adequado | Estados de sucesso/erro claros ao usuário | Web |
+
+---
+
+## US10 — Gerenciamento do próprio perfil
+
+| ID | Condição | Resultado Esperado | Camada |
+|---:|---|---|---|
+| 1 | Permitir leitura do perfil somente para o usuário autenticado | Não expor perfil de terceiros | API |
+| 2 | Permitir atualização somente do próprio perfil | Cliente não altera dados de outros | API |
+| 3 | Validar formato/quantidade de dígitos do CPF | Não atualizar com CPF inválido | API |
+| 4 | Validar quantidade mínima de dígitos do telefone | Não atualizar com telefone inválido | API |
+| 5 | Impedir campos obrigatórios em branco | Não atualizar com valores vazios | API |
+| 6 | Não retornar hash da senha em qualquer resposta | Payload nunca contém credenciais | API |
+| 7 | Exibir aviso quando o perfil estiver incompleto antes de reservar | Cliente é direcionado a completar perfil | Web |
+
+---
+
+## US11 — Detalhe de uma reserva
+
+| ID | Condição | Resultado Esperado | Camada |
+|---:|---|---|---|
+| 1 | Permitir consulta apenas de reservas próprias para clientes | Reservas de terceiros não são exibidas | API |
+| 2 | Permitir consulta de qualquer reserva para administradores | Detalhe disponível para o admin | API |
+| 3 | Retornar erro de não encontrado para identificador inexistente | Recurso indisponível tratado como 404 | API |
+| 4 | Incluir status, data, refeição, quantidade, cancelamento e entrega no payload | Dados completos do ciclo de vida | API |
+| 5 | Apresentar campos com formatação amigável (data, hora) na UI | Leitura natural pelo usuário final | Web |
+
+---
+
+## US12 — Listagem global pelo administrador
+
+| ID | Condição | Resultado Esperado | Camada |
+|---:|---|---|---|
+| 1 | Aceitar listagem global somente para perfil administrador | Cliente nunca recebe reservas de terceiros | API |
+| 2 | Aceitar filtros por intervalo de datas combinados com listagem global | Filtros aplicados consistentemente | API |
+| 3 | Sem flag global, retornar apenas reservas próprias para qualquer usuário | Comportamento padrão consistente para todos os perfis | API |
+| 4 | Ordenar resultados por data ascendente | Lista cronológica | API |
+| 5 | Suportar filtros adicionais (status) na UI administrativa | UX produtiva para o operador | Web |
+
+---
+
+## US13 — Histórico de cancelamentos (administrador)
+
+| ID | Condição | Resultado Esperado | Camada |
+|---:|---|---|---|
+| 1 | Permitir acesso somente para perfil administrador | Cliente recebe acesso negado | API |
+| 2 | Aceitar filtro por identificador de reserva | Resultado restrito à reserva informada | API |
+| 3 | Registrar dados completos do cancelamento (autor, papel, motivo, data) | Histórico auditável | API |
+| 4 | Exibir histórico em tabela amigável na UI administrativa | Visualização clara para o operador | Web |
+
+---
+
+## US14 — Documentação interativa da API
+
+| ID | Condição | Resultado Esperado | Camada |
+|---:|---|---|---|
+| 1 | Carregar especificação a partir do arquivo de recursos na inicialização | API sobe com a documentação atualizada | API |
+| 2 | Servir UI Swagger no endpoint dedicado | UI disponível em `/api-docs` | API |
+| 3 | Servir documento OpenAPI bruto para ferramentas externas | Endpoint `/api-docs.json` retorna o spec | API |
+| 4 | Documentar request body, parâmetros, schemas e códigos de erro de cada endpoint | Spec contempla todos os contratos | API |
+
+---
+
+## US15 — Consultar disponibilidade de marmitas
+
+| ID | Condição | Resultado Esperado | Camada |
+|---:|---|---|---|
+| 1 | Exigir autenticação na consulta de disponibilidade | Sem token → não autorizado | API |
+| 2 | Validar formato da data informada no parâmetro | Não retornar dados quando formato inválido | API |
+| 3 | Retornar `stock`, `used`, `available` e `cutoffHour` por refeição | Resposta contempla todos os campos por refeição | API |
+| 4 | Não contabilizar reservas canceladas ou entregues no `used` | Apenas reservas ativas consomem estoque | API |
+| 5 | Considerar a soma de quantidades para calcular `used` | Reservas com quantidade > 1 contabilizam corretamente | API |
+| 6 | Refletir limites de estoque configurados por refeição | Consulta respeita variáveis de ambiente do backend | API |
+| 7 | Atualizar UI ao mudar a data | Badges/totais recalculados automaticamente | Web |
+| 8 | Indicar visualmente o estado (verde/âmbar/vermelho) | Cor compatível com a faixa de disponibilidade | Web |
+
+---
+
+## Priorização — Condições de teste mais críticas
+
+Critérios: maior impacto **operacional** (cantina), **financeiro** (estoque, vagas), **de segurança** (autenticação, isolamento por usuário/perfil) ou **de imagem** (cliente recebendo o que não pediu, vazamento de dados).
+
+| Prioridade | US | CT | Condição | Tipo de risco |
+|---:|---|---:|---|---|
+| 1 | US01 | 4 | Bloquear usuário após número máximo de tentativas inválidas consecutivas | Segurança |
+| 2 | US01 | 2 | Permitir login com credenciais válidas (autenticação base) | Segurança/operacional |
+| 3 | US02 | 9 | Validar disponibilidade de estoque por refeição comparando quantidades | Operacional/financeiro |
+| 4 | US02 | 7 | Respeitar limite diário de marmitas por usuário considerando a soma das quantidades | Operacional/financeiro |
+| 5 | US02 | 8 | Impedir duplicidade de reserva da mesma refeição no dia para o mesmo usuário | Operacional |
+| 6 | US02 | 6 | Respeitar horário de corte específico de cada refeição no dia atual | Operacional |
+| 7 | US05 | 1 | Permitir entrega somente para administradores | Segurança/operacional |
+| 8 | US05 | 2 | Permitir entrega somente para reservas com status "ativa" | Operacional |
+| 9 | US06 | 1 | Permitir cancelamento administrativo somente para administradores | Segurança/operacional |
+| 10 | US06 | 2 | Exigir motivo na requisição de cancelamento administrativo | Imagem/operacional |
+| 11 | US03 | 1 | Permitir cancelamento somente pelo dono da reserva | Segurança |
+| 12 | US04 | 1 | Listar somente reservas próprias para clientes (isolamento por usuário) | Segurança/imagem |
+| 13 | US07 | 5 | Armazenar senha de forma segura (criptografada) e nunca retornar | Segurança |
+| 14 | US07 | 4 | Garantir unicidade de e-mail no sistema | Segurança/operacional |
+| 15 | US10 | 6 | Não retornar hash da senha em qualquer resposta | Segurança |
+| 16 | US10 | 1 | Permitir leitura do perfil somente para o usuário autenticado | Segurança |
+| 17 | US12 | 1 | Aceitar listagem global de reservas somente para administradores | Segurança/imagem |
+| 18 | US15 | 4 | Não contabilizar reservas canceladas/entregues no cálculo de disponibilidade | Operacional/financeiro |
+| 19 | US09 | 6 | Desbloquear usuário após reset de senha bem-sucedido | Operacional |
+| 20 | US08 | 3 | Invalidar o token de confirmação após uso bem-sucedido | Segurança |
