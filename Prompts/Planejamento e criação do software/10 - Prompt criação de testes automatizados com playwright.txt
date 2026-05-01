@@ -1,0 +1,32 @@
+Objetivo
+Criar testes automatizados Web para User Story contidas no readme.md
+
+Contexto
+- As User Stories e seus critérios e regras estão no no readme.md
+- Os casos de testes estão no arquivo 8 - casos de teste.txt
+- As condições de teste estão no arquivo "4 - condições de teste.txt"
+- Você conseguirá os locators da aplicação Web na própria aplicação que está em ./frontend/
+- Diferenciação de casos de teste e condições de teste:
+  Casos são detalhados, condições de teste são mais genéricas, por exemplo:
+   A regra de negócios "Deve ser possível filtrar os agendamentos por período (ex: dia, semana, mês) e por status."
+   geraria uma condição de teste "Filtrar dados com base nos filtros disponíveis". A partir de condições de teste podem gerar muitos casos de teste como "Filtrar dados por dia", "Filtrar dados por semana", "Filtrar dados por mês", etc.
+   Condições de teste são mais abstratas e casos de teste são mais específicos.
+Use o projeto velo
+
+Regras
+- Usaremos playwright para escrita dos testes automatizados Web
+- Se a estrutura de automação de testes com as ferramentas mencionadas ainda não estiver pronto, crie ela
+- Escreva apenas os testes automatizados que cobrirão os casos de teste das user stories
+- Gere relatório de execução de testes em HTML
+- Crie uma estrutura escalável e bem organizada utilizando padrão de projeto actions fixtures no playwright
+- crie a conexão de maneira que eu possa só trocar a URL e mudar de um ambiente de dev, homologação ou produção.
+
+Passo a Passo da Execução:
+1. Leia as user stories e respectivos critérios de aceite que estão no README.md
+2. Leia as condições de teste do arquivo "3 - Condições de Teste.txt"
+3. Leia o swagger.yaml que está em ./resources/ para obter mais informações
+4. Leia o arquivo .env para informações de conexão das aplicações web e api
+5. Identifique se precisamos instalar as bibliotecas para construção dos testes automatizados Web
+6. Certifique que leu todos os arquivos e pastas indicados, incluindo o "8 - casos de teste.txt"
+8. Use os casos de teste do arquivo "8 - casos de teste.txt" para então gerar os testes automatizados Web usando como modelo o padrão de projeto actions fixtures playwright que foi implementado no projeto "C:\Projetos\Turma3\velo"  
+9. Execute os testes automatizados Web para verificar se foram escritos como deveriam

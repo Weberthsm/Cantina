@@ -1,0 +1,1410 @@
+# Casos de Teste — Cantina
+
+Casos de teste detalhados em Gherkin, derivados das Condições de Teste (`4 - Condições de Teste.txt`) e dos Critérios de Aceitação Gherkin do README.
+
+Cada caso segue o padrão:
+
+> `**TCxx — Título** · Tipo · Camada · CTs cobertas`
+
+- **Tipo**: Positivo · Negativo · Borda · Permissão.
+- **Camada**: Ambas (padrão) · API · Web (apenas quando o comportamento diverge entre camadas).
+- **CTs**: condições de teste exercitadas.
+
+Mensagens de erro são citadas literalmente apenas quando carregam informação essencial ao usuário (números, limites, próxima ação). Nos demais casos, o "Então" descreve a categoria do erro em linguagem de negócio.
+
+---
+
+## US01 — Login de usuário
+
+**TC01 — Cliente loga com credenciais válidas** · Positivo · Ambas · CT02
+
+```gherkin
+Cenário: Cliente autentica com sucesso
+  Dado que sou um cliente cadastrado e com e-mail confirmado
+  Quando informo meu e-mail e minha senha corretos
+  Então sou autenticado com sucesso
+  E recebo um token de acesso válido
+```
+
+**TC02 — Login sem campos obrigatórios** · Negativo · API · CT01
+
+```gherkin
+Esquema do Cenário: Login com credenciais ausentes
+  Quando tento fazer login informando "<email>" e "<senha>"
+  Então o login é rejeitado por validação de dados
+
+  Exemplos:
+    | email             | senha    |
+    |                   |          |
+    |                   | senha123 |
+    | cliente@email.com |          |
+```
+
+**TC03 — Login com senha incorreta** · Negativo · Ambas · CT03
+
+```gherkin
+Cenário: Senha incorreta
+  Dado que sou um usuário cadastrado e confirmado
+  Quando informo minha senha incorretamente
+  Então o login é rejeitado por credenciais inválidas
+```
+
+**TC04 — Login com e-mail não cadastrado** · Negativo · Ambas · CT03
+
+```gherkin
+Cenário: E-mail desconhecido
+  Quando tento fazer login com um e-mail que não existe na base
+  Então o login é rejeitado por credenciais inválidas
+```
+
+**TC05 — Bloqueio após 5 tentativas inválidas consecutivas** · Negativo · API · CT04
+
+```gherkin
+Cenário: Conta bloqueada após excesso de tentativas
+  Dado que sou um usuário cadastrado e confirmado
+  E acabei de errar a senha 4 vezes consecutivas
+  Quando erro a senha mais uma vez
+  Então a conta passa ao estado "bloqueada"
+  E a próxima tentativa de login é rejeitada com mensagem indicando bloqueio por excesso de tentativas
+```
+
+**TC06 — Login bloqueado para usuário com bloqueio ativo** · Negativo · API · CT06
+
+```gherkin
+Cenário: Usuário já bloqueado tenta logar
+  Dado que sou um usuário com a conta bloqueada
+  Quando tento fazer login com credenciais corretas
+  Então o login é rejeitado por bloqueio da conta
+```
+
+**TC07 — Login para usuário com e-mail não confirmado** · Negativo · API · CT05
+
+```gherkin
+Cenário: Usuário recém-cadastrado sem confirmar e-mail
+  Dado que me cadastrei mas ainda não confirmei meu e-mail
+  Quando informo minhas credenciais corretas
+  Então o login é rejeitado por e-mail ainda não confirmado
+```
+
+**TC08 — Contador de tentativas zera após login bem-sucedido** · Borda · API · CT07
+
+```gherkin
+Cenário: Tentativas inválidas anteriores não persistem após sucesso
+  Dado que sou um usuário cadastrado e confirmado
+  E tenho 3 tentativas inválidas registradas
+  Quando faço login com credenciais corretas
+  Então o login é bem-sucedido
+  E meu contador de tentativas inválidas é zerado
+```
+
+**TC09 — Feedback visual de erro de credenciais** · Negativo · Web · CT08
+
+```gherkin
+Cenário: Mensagem de erro visível na tela de login
+  Dado que estou na tela de login
+  Quando submeto credenciais inválidas
+  Então vejo uma notificação de erro indicando credenciais inválidas
+  E permaneço na tela de login
+```
+
+**TC10 — Botão em estado de carregamento durante autenticação** · Borda · Web · CT09
+
+```gherkin
+Cenário: Indicador de progresso ao logar
+  Dado que estou na tela de login
+  Quando submeto o formulário com credenciais válidas
+  Então o botão de envio fica desabilitado e exibe estado de carregamento até a resposta da API
+```
+
+---
+
+## US02 — Cadastro de reservas
+
+**TC01 — Cliente cria reserva válida de 1 almoço** · Positivo · Ambas · CT01, CT03, CT10, CT11
+
+```gherkin
+Cenário: Reserva de almoço com sucesso para data futura
+  Dado que sou um cliente autenticado com perfil completo
+  E o estoque de almoço para "2026-05-20" tem vagas
+  E ainda não passou do horário de corte do almoço
+  Quando reservo um almoço para "2026-05-20" sem informar quantidade
+  Então a reserva é confirmada
+  E a reserva criada tem status "ativa" e quantidade 1
+  E a reserva fica vinculada ao meu usuário
+```
+
+**TC02 — Cliente reserva múltiplos jantares em uma única reserva** · Positivo · Ambas · CT03, CT11
+
+```gherkin
+Cenário: Cliente reserva 2 jantares em uma reserva única
+  Dado que sou um cliente autenticado com perfil completo
+  E o estoque de jantar para "2026-05-20" tem ao menos 2 vagas
+  E não tenho reserva ativa de jantar nesse dia
+  Quando reservo 2 jantares para "2026-05-20"
+  Então a reserva é confirmada com quantidade 2
+  E a disponibilidade do jantar do dia passa a apresentar "used" igual a 2
+```
+
+**TC03 — Reserva sem campos obrigatórios** · Negativo · API · CT01
+
+```gherkin
+Esquema do Cenário: Reserva com campos obrigatórios ausentes
+  Dado que sou um cliente autenticado com perfil completo
+  Quando tento reservar uma refeição com data "<data>" e tipo "<tipo>"
+  Então a reserva é rejeitada por validação de dados
+
+  Exemplos:
+    | data       | tipo   |
+    |            | almoco |
+    | 2026-05-20 |        |
+    |            |        |
+```
+
+**TC04 — Cliente sem perfil completo tenta reservar** · Negativo · API · CT02
+
+```gherkin
+Cenário: Cliente sem CPF, telefone e endereço
+  Dado que sou um cliente autenticado sem CPF, telefone e endereço
+  Quando tento reservar uma refeição para uma data futura
+  Então a reserva é rejeitada por perfil incompleto
+  E a resposta indica os campos do perfil que estão faltando
+```
+
+**TC05 — Quantidade inválida (zero, negativa, decimal, não numérica)** · Negativo · API · CT04
+
+```gherkin
+Esquema do Cenário: Quantidade inválida na reserva
+  Dado que sou um cliente autenticado com perfil completo
+  Quando tento reservar uma refeição para "2026-05-20" informando quantidade <quantidade>
+  Então a reserva é rejeitada por validação de dados
+
+  Exemplos:
+    | quantidade |
+    | 0          |
+    | -1         |
+    | 2.5        |
+    | "abc"      |
+```
+
+**TC06 — Reserva para data passada** · Negativo · API · CT05
+
+```gherkin
+Cenário: Tentativa de reserva para data anterior a hoje
+  Dado que sou um cliente autenticado com perfil completo
+  Quando tento reservar uma refeição para "2020-01-01"
+  Então a reserva é rejeitada por violação de regra de negócio (data passada)
+```
+
+**TC07 — Reserva no mesmo dia após o horário de corte da refeição** · Negativo · API · CT06
+
+```gherkin
+Cenário: Almoço no mesmo dia após o corte
+  Dado que sou um cliente autenticado com perfil completo
+  E o horário de corte do almoço é 10h e a hora atual é 11h
+  Quando tento reservar um almoço para hoje
+  Então a reserva é rejeitada por horário de corte ultrapassado
+```
+
+**TC08 — Cortes diferentes por refeição respeitados** · Borda · API · CT06
+
+```gherkin
+Cenário: Jantar de hoje após o corte do almoço, mas antes do corte do jantar
+  Dado que sou um cliente autenticado com perfil completo
+  E o corte do almoço é 10h e o corte do jantar é 16h
+  E a hora atual é 12h
+  Quando reservo um jantar para hoje
+  Então a reserva é confirmada com status "ativa"
+```
+
+**TC09 — Limite diário do usuário ultrapassado somando quantidades** · Negativo · API · CT07
+
+```gherkin
+Cenário: Soma das quantidades excede o limite diário
+  Dado que sou um cliente autenticado com perfil completo
+  E já tenho 2 jantares ativos para "2026-05-20"
+  Quando tento reservar 4 almoços para "2026-05-20"
+  Então a reserva é rejeitada com a mensagem "Limite de 5 marmitas por dia atingido. Você ainda pode reservar 3."
+```
+
+**TC10 — Cliente respeita o limite usando quantidade** · Positivo · API · CT07
+
+```gherkin
+Cenário: 2 jantares + 3 almoços no mesmo dia (limite 5)
+  Dado que sou um cliente autenticado com perfil completo
+  E já tenho 2 jantares ativos para "2026-05-20"
+  Quando reservo 3 almoços para "2026-05-20"
+  Então a reserva é confirmada com status "ativa"
+```
+
+**TC11 — Refeição duplicada no mesmo dia para o mesmo usuário** · Negativo · API · CT08
+
+```gherkin
+Cenário: Cliente já tem reserva ativa de almoço no dia
+  Dado que sou um cliente autenticado com perfil completo
+  E já tenho uma reserva ativa de almoço para "2026-05-20"
+  Quando tento criar outra reserva de almoço para "2026-05-20"
+  Então a reserva é rejeitada por duplicidade de refeição no dia
+```
+
+**TC12 — Estoque insuficiente para a quantidade pedida** · Negativo · API · CT09
+
+```gherkin
+Cenário: Quantidade ultrapassa o estoque restante
+  Dado que sou um cliente autenticado com perfil completo
+  E o estoque de jantar para "2026-05-20" é 3 e ainda não houve reservas
+  Quando tento reservar 4 jantares para "2026-05-20"
+  Então a reserva é rejeitada com a mensagem "Estoque insuficiente para jantar no dia 2026-05-20. Restam 3 de 3."
+```
+
+**TC13 — Estoque do almoço esgotado não bloqueia jantar** · Borda · API · CT09
+
+```gherkin
+Cenário: Estoques independentes por refeição
+  Dado que sou um cliente autenticado com perfil completo
+  E o estoque de almoço para "2026-05-20" está totalmente consumido
+  E o estoque de jantar para "2026-05-20" tem vagas
+  Quando reservo um jantar para "2026-05-20"
+  Então a reserva é confirmada com status "ativa"
+```
+
+**TC14 — Disponibilidade exibida atualiza ao mudar a data** · Positivo · Web · CT12
+
+```gherkin
+Cenário: Usuário troca a data e vê novos números de disponibilidade
+  Dado que estou na tela de Nova Reserva
+  Quando seleciono uma data diferente
+  Então a tela recarrega a disponibilidade e exibe os novos valores de "used" e "available" por refeição
+```
+
+**TC15 — Stepper limita quantidade ao mínimo entre estoque e orçamento diário** · Positivo · Web · CT13
+
+```gherkin
+Cenário: Limite de quantidade no stepper
+  Dado que estou na tela de Nova Reserva
+  E o estoque restante de jantar é 8 e meu orçamento diário restante é 3
+  Quando ajusto a quantidade no stepper
+  Então o valor máximo permitido é 3
+```
+
+**TC16 — Refeição esgotada é sinalizada visualmente e bloqueada** · Positivo · Web · CT14, CT15
+
+```gherkin
+Cenário: Cliente vê refeição esgotada com badge vermelho e botão desabilitado
+  Dado que estou na tela de Nova Reserva
+  E o estoque de almoço para "2026-05-20" está totalmente consumido
+  Quando seleciono a data "2026-05-20"
+  Então o cartão de almoço exibe um badge "Esgotado"
+  E a opção de almoço fica indisponível para seleção
+  E o botão de confirmar exibe "Esgotado"
+```
+
+**TC17 — Tentativa de reservar sem autenticação** · Permissão · API · CT01
+
+```gherkin
+Cenário: Reserva sem token
+  Dado que não envio o cabeçalho de autenticação
+  Quando tento criar uma reserva
+  Então a operação é rejeitada por falta de autenticação
+```
+
+---
+
+## US03 — Cancelamento de reservas (cliente)
+
+**TC01 — Cliente cancela reserva própria antes do horário de corte** · Positivo · Ambas · CT01, CT06, CT07
+
+```gherkin
+Cenário: Cancelamento dentro do prazo
+  Dado que sou o dono de uma reserva ativa de jantar para uma data futura
+  E ainda não passou do horário de corte do jantar
+  Quando cancelo a reserva
+  Então a reserva passa ao status "cancelada"
+  E o estoque do jantar daquele dia volta a refletir a quantidade liberada
+  E o cancelamento é registrado no histórico com meu usuário e papel "client"
+```
+
+**TC02 — Cliente tenta cancelar reserva de outro usuário** · Negativo · API · CT02
+
+```gherkin
+Cenário: Reserva pertencente a terceiro
+  Dado que sou um cliente autenticado
+  E existe uma reserva ativa pertencente a outro cliente
+  Quando tento cancelar essa reserva
+  Então a operação é rejeitada por falta de permissão (reserva não é própria)
+```
+
+**TC03 — Cancelamento após o horário de corte** · Negativo · API · CT03
+
+```gherkin
+Cenário: Cancelamento de reserva do dia após o corte
+  Dado que sou o dono de uma reserva ativa de almoço para hoje
+  E o horário de corte do almoço é 10h e a hora atual é 11h
+  Quando tento cancelar a reserva
+  Então a operação é rejeitada por horário de corte ultrapassado
+```
+
+**TC04 — Cancelamento de reserva já entregue** · Negativo · API · CT04
+
+```gherkin
+Cenário: Reserva no status "entregue"
+  Dado que sou o dono de uma reserva já marcada como entregue
+  Quando tento cancelar a reserva
+  Então a operação é rejeitada por estado inválido da reserva
+```
+
+**TC05 — Cancelamento de reserva já cancelada** · Negativo · API · CT05
+
+```gherkin
+Cenário: Reserva no status "cancelada"
+  Dado que sou o dono de uma reserva já cancelada
+  Quando tento cancelar a reserva novamente
+  Então a operação é rejeitada por estado inválido da reserva
+```
+
+**TC06 — Confirmação visual antes do cancelamento** · Borda · Web · CT08
+
+```gherkin
+Cenário: Diálogo de confirmação na tela
+  Dado que estou na lista de minhas reservas
+  Quando aciono o cancelamento de uma reserva
+  Então um diálogo de confirmação é exibido
+  E a reserva só é cancelada após eu confirmar
+```
+
+**TC07 — Tentativa de cancelar sem autenticação** · Permissão · API · CT01
+
+```gherkin
+Cenário: Cancelamento sem token
+  Dado que não envio o cabeçalho de autenticação
+  Quando tento cancelar uma reserva
+  Então a operação é rejeitada por falta de autenticação
+```
+
+---
+
+## US04 — Consultar reservas por data
+
+**TC01 — Cliente lista suas reservas em um intervalo** · Positivo · Ambas · CT01, CT02, CT04, CT05
+
+```gherkin
+Cenário: Filtro por intervalo de datas
+  Dado que sou um cliente autenticado com reservas em datas variadas
+  Quando consulto minhas reservas filtrando por intervalo de datas
+  Então recebo apenas reservas próprias dentro do intervalo
+  E os resultados estão ordenados por data ascendente
+  E cada reserva exibe seu status atual
+```
+
+**TC02 — Cliente não enxerga reservas de terceiros** · Negativo · API · CT01
+
+```gherkin
+Cenário: Isolamento por usuário
+  Dado que sou um cliente autenticado
+  E existem reservas pertencentes a outros clientes
+  Quando consulto minhas reservas
+  Então recebo apenas as reservas que eu mesmo criei
+```
+
+**TC03 — Filtro com data em formato inválido** · Negativo · API · CT03
+
+```gherkin
+Esquema do Cenário: Parâmetro de data fora do formato YYYY-MM-DD
+  Dado que sou um cliente autenticado
+  Quando consulto minhas reservas com "<param>" igual a "<valor>"
+  Então a consulta é rejeitada por validação de dados
+
+  Exemplos:
+    | param | valor      |
+    | from  | 2026/05/01 |
+    | to    | xpto       |
+    | from  | 31-12-2026 |
+```
+
+**TC04 — Lista vazia retorna empty state amigável** · Borda · Web · CT06
+
+```gherkin
+Cenário: Cliente sem reservas vê estado vazio
+  Dado que estou na tela de "Minhas reservas"
+  E não tenho nenhuma reserva no intervalo consultado
+  Quando aplico o filtro
+  Então a tela exibe um empty state com call-to-action para criar uma reserva
+```
+
+**TC05 — Tentativa de consulta sem autenticação** · Permissão · API · CT01
+
+```gherkin
+Cenário: Consulta sem token
+  Dado que não envio o cabeçalho de autenticação
+  Quando consulto reservas
+  Então a operação é rejeitada por falta de autenticação
+```
+
+---
+
+## US05 — Marcar como entregue (administrador)
+
+**TC01 — Administrador marca reserva ativa como entregue** · Positivo · Ambas · CT01, CT02, CT04
+
+```gherkin
+Cenário: Entrega bem-sucedida
+  Dado que sou um administrador autenticado
+  E existe uma reserva com status "ativa"
+  Quando marco essa reserva como entregue
+  Então a reserva passa ao status "entregue"
+  E a reserva registra a data e hora da entrega e o administrador responsável
+```
+
+**TC02 — Cliente comum tenta marcar como entregue** · Permissão · API · CT01
+
+```gherkin
+Cenário: Cliente sem privilégio
+  Dado que sou um cliente autenticado (não administrador)
+  Quando tento marcar uma reserva como entregue
+  Então a operação é rejeitada por falta de permissão (perfil insuficiente)
+```
+
+**TC03 — Tentativa de entregar reserva já entregue** · Negativo · API · CT02, CT03
+
+```gherkin
+Cenário: Reserva já entregue
+  Dado que sou um administrador autenticado
+  E existe uma reserva já marcada como entregue
+  Quando tento marcar essa reserva como entregue novamente
+  Então a operação é rejeitada por estado inválido da reserva
+```
+
+**TC04 — Tentativa de entregar reserva cancelada** · Negativo · API · CT02
+
+```gherkin
+Cenário: Reserva cancelada
+  Dado que sou um administrador autenticado
+  E existe uma reserva com status "cancelada"
+  Quando tento marcar essa reserva como entregue
+  Então a operação é rejeitada por estado inválido da reserva
+```
+
+**TC05 — Confirmação visual antes da entrega** · Borda · Web · CT05
+
+```gherkin
+Cenário: Diálogo de confirmação para o administrador
+  Dado que estou na área administrativa
+  Quando aciono "Marcar como entregue" em uma reserva
+  Então um diálogo de confirmação é exibido
+  E a reserva só é entregue após eu confirmar
+```
+
+**TC06 — Tentativa de entrega sem autenticação** · Permissão · API · CT01
+
+```gherkin
+Cenário: Operação administrativa sem token
+  Dado que não envio o cabeçalho de autenticação
+  Quando tento marcar uma reserva como entregue
+  Então a operação é rejeitada por falta de autenticação
+```
+
+---
+
+## US06 — Cancelamento pelo administrador
+
+**TC01 — Administrador cancela reserva com motivo** · Positivo · Ambas · CT01, CT02, CT05, CT06
+
+```gherkin
+Cenário: Cancelamento administrativo bem-sucedido
+  Dado que sou um administrador autenticado
+  E existe uma reserva ativa de um cliente
+  Quando cancelo a reserva informando um motivo válido
+  Então a reserva passa ao status "cancelada"
+  E o histórico registra o motivo, o administrador e a data
+  E o cliente recebe notificação do cancelamento
+```
+
+**TC02 — Cancelamento administrativo após o horário de corte** · Borda · API · CT03
+
+```gherkin
+Cenário: Admin cancela mesmo após o corte do dia
+  Dado que sou um administrador autenticado
+  E o horário de corte da refeição já passou no dia da reserva
+  Quando cancelo a reserva informando motivo válido
+  Então a reserva passa ao status "cancelada"
+```
+
+**TC03 — Tentativa de cancelar sem motivo** · Negativo · API · CT02
+
+```gherkin
+Esquema do Cenário: Motivo ausente ou em branco
+  Dado que sou um administrador autenticado
+  Quando tento cancelar uma reserva informando motivo "<motivo>"
+  Então a operação é rejeitada por validação de dados
+
+  Exemplos:
+    | motivo |
+    |        |
+    | "   "  |
+```
+
+**TC04 — Tentativa de cancelar reserva já entregue** · Negativo · API · CT04
+
+```gherkin
+Cenário: Cancelamento de reserva entregue
+  Dado que sou um administrador autenticado
+  E existe uma reserva já entregue
+  Quando tento cancelar essa reserva
+  Então a operação é rejeitada por estado inválido da reserva
+```
+
+**TC05 — Cliente comum tenta cancelar reserva de terceiro** · Permissão · API · CT01
+
+```gherkin
+Cenário: Operação restrita ao admin
+  Dado que sou um cliente autenticado (não administrador)
+  Quando tento usar a operação administrativa de cancelamento
+  Então a operação é rejeitada por falta de permissão (perfil insuficiente)
+```
+
+**TC06 — Botão de confirmação fica desabilitado sem motivo** · Borda · Web · CT07
+
+```gherkin
+Cenário: Validação no formulário de cancelamento administrativo
+  Dado que estou no diálogo de cancelamento administrativo
+  Quando o campo "motivo" está vazio
+  Então o botão de confirmar permanece desabilitado
+```
+
+---
+
+## US07 — Cadastro de cliente
+
+**TC01 — Cadastro válido** · Positivo · Ambas · CT01, CT02, CT03, CT06
+
+```gherkin
+Cenário: Cliente se cadastra com dados válidos
+  Quando me cadastro informando nome completo, e-mail válido e senha com pelo menos 6 caracteres
+  Então o cadastro é aceito
+  E recebo a orientação de confirmar meu e-mail antes de fazer login
+  E um token de confirmação é gerado para meu e-mail
+```
+
+**TC02 — Cadastro com campos obrigatórios em branco** · Negativo · API · CT01
+
+```gherkin
+Esquema do Cenário: Campo obrigatório ausente
+  Quando me cadastro com "<campo>" em branco
+  Então o cadastro é rejeitado por validação de dados
+
+  Exemplos:
+    | campo |
+    | nome  |
+    | email |
+    | senha |
+```
+
+**TC03 — Cadastro com e-mail inválido** · Negativo · API · CT02
+
+```gherkin
+Esquema do Cenário: Formato de e-mail inválido
+  Quando me cadastro informando "<email>" como e-mail
+  Então o cadastro é rejeitado por validação de dados
+
+  Exemplos:
+    | email             |
+    | joao.example.com  |
+    | sem-arroba.com    |
+    | @semlocal.com     |
+    | semdominio@       |
+```
+
+**TC04 — Cadastro com senha curta** · Negativo · API · CT03
+
+```gherkin
+Cenário: Senha com menos de 6 caracteres
+  Quando me cadastro informando uma senha com 5 caracteres
+  Então o cadastro é rejeitado por validação de dados
+```
+
+**TC05 — Cadastro duplicado** · Negativo · API · CT04
+
+```gherkin
+Cenário: E-mail já cadastrado
+  Dado que já existe uma conta com o e-mail "joao@example.com"
+  Quando tento me cadastrar informando esse mesmo e-mail
+  Então o cadastro é rejeitado por conflito (e-mail já cadastrado)
+```
+
+**TC06 — Senha armazenada de forma segura** · Borda · API · CT05
+
+```gherkin
+Cenário: Senha não é exposta na resposta
+  Quando me cadastro com sucesso
+  Então a resposta não contém a senha em texto puro nem o hash
+```
+
+**TC07 — Login bloqueado para usuário sem confirmação** · Negativo · API · CT07
+
+```gherkin
+Cenário: Login antes da confirmação do e-mail
+  Dado que me cadastrei mas ainda não confirmei o e-mail
+  Quando informo minhas credenciais corretas
+  Então o login é rejeitado por e-mail não confirmado
+```
+
+**TC08 — Feedback visual em erros de validação** · Borda · Web · CT08
+
+```gherkin
+Cenário: Mensagens de erro por campo no formulário
+  Dado que estou no formulário de cadastro
+  Quando submeto com dados inválidos
+  Então cada campo com erro exibe uma mensagem orientadora
+  E o cadastro não é submetido
+```
+
+---
+
+## US08 — Confirmação de cadastro por e-mail
+
+**TC01 — Confirmação com token válido** · Positivo · Ambas · CT01
+
+```gherkin
+Cenário: E-mail confirmado com sucesso
+  Dado que recebi um token de confirmação após o cadastro
+  Quando confirmo meu e-mail informando esse token
+  Então minha conta passa a estar confirmada
+  E posso realizar login
+```
+
+**TC02 — Confirmação com token inválido** · Negativo · API · CT02
+
+```gherkin
+Cenário: Token desconhecido
+  Quando tento confirmar meu e-mail informando um token desconhecido
+  Então a confirmação é rejeitada por validação de dados
+```
+
+**TC03 — Reuso de token já consumido** · Negativo · API · CT03
+
+```gherkin
+Cenário: Token já utilizado
+  Dado que já confirmei meu e-mail anteriormente com determinado token
+  Quando tento usar o mesmo token novamente
+  Então a confirmação é rejeitada por validação de dados
+```
+
+**TC04 — Indicação visual de sucesso** · Borda · Web · CT04
+
+```gherkin
+Cenário: Feedback positivo após confirmação
+  Dado que estou na tela de confirmação de e-mail
+  Quando confirmo com um token válido
+  Então vejo um feedback de sucesso
+  E sou direcionado para a tela de login
+```
+
+---
+
+## US09 — Recuperação de senha
+
+**TC01 — Solicitação de recuperação para e-mail cadastrado** · Positivo · Ambas · CT01
+
+```gherkin
+Cenário: Token de recuperação gerado
+  Dado que sou um usuário cadastrado
+  Quando solicito a recuperação de senha do meu e-mail
+  Então recebo um token de recuperação válido por 30 minutos
+```
+
+**TC02 — Solicitação para e-mail desconhecido (resposta silenciosa)** · Borda · API · CT02
+
+```gherkin
+Cenário: E-mail não cadastrado não vaza informação
+  Quando solicito a recuperação de senha de um e-mail que não existe
+  Então recebo a mesma resposta de sucesso de um e-mail cadastrado, sem revelar a existência
+```
+
+**TC03 — Reset com token válido** · Positivo · Ambas · CT04
+
+```gherkin
+Cenário: Reset de senha bem-sucedido
+  Dado que possuo um token de recuperação válido
+  Quando redefino minha senha informando uma nova senha de pelo menos 6 caracteres
+  Então minha senha é atualizada
+  E consigo fazer login com a nova senha
+```
+
+**TC04 — Reset com token expirado** · Negativo · API · CT03
+
+```gherkin
+Cenário: Token fora do prazo de validade
+  Dado que possuo um token de recuperação que expirou
+  Quando tento redefinir a senha com esse token
+  Então a operação é rejeitada por validação de dados
+```
+
+**TC05 — Reset com nova senha curta** · Negativo · API · CT04
+
+```gherkin
+Cenário: Nova senha com menos de 6 caracteres
+  Dado que possuo um token de recuperação válido
+  Quando tento redefinir a senha informando "12345"
+  Então a operação é rejeitada por validação de dados
+```
+
+**TC06 — Reuso de token após reset** · Negativo · API · CT05
+
+```gherkin
+Cenário: Token consumido não pode ser reutilizado
+  Dado que já redefini minha senha com um token de recuperação
+  Quando tento usar o mesmo token novamente
+  Então a operação é rejeitada por validação de dados
+```
+
+**TC07 — Reset desbloqueia usuário bloqueado** · Borda · API · CT06
+
+```gherkin
+Cenário: Conta bloqueada é liberada após reset
+  Dado que minha conta está bloqueada por excesso de tentativas
+  Quando redefino minha senha com um token válido
+  Então minha conta deixa de estar bloqueada
+  E o contador de tentativas inválidas é zerado
+  E consigo fazer login com a nova senha
+```
+
+**TC08 — UI de solicitação e redefinição com feedback** · Borda · Web · CT07
+
+```gherkin
+Cenário: Mensagens de sucesso/erro nas telas
+  Dado que estou no fluxo de recuperação de senha
+  Quando concluo cada etapa (solicitar token, redefinir)
+  Então cada etapa exibe um feedback claro de sucesso ou erro ao usuário
+```
+
+---
+
+## US10 — Gerenciamento do próprio perfil
+
+**TC01 — Cliente atualiza perfil com dados válidos** · Positivo · Ambas · CT02
+
+```gherkin
+Cenário: Atualização bem-sucedida
+  Dado que sou um cliente autenticado
+  Quando atualizo meu perfil informando nome, CPF, telefone e endereço válidos
+  Então meus dados são salvos
+  E ao consultar meu perfil vejo os valores atualizados
+```
+
+**TC02 — Cliente consulta seu próprio perfil** · Positivo · Ambas · CT01
+
+```gherkin
+Cenário: Leitura do próprio perfil
+  Dado que sou um cliente autenticado
+  Quando consulto meu perfil
+  Então recebo meus dados pessoais e papel
+```
+
+**TC03 — Atualização com CPF inválido** · Negativo · API · CT03
+
+```gherkin
+Esquema do Cenário: Formato de CPF inválido
+  Dado que sou um cliente autenticado
+  Quando atualizo meu perfil informando "<cpf>" como CPF
+  Então a atualização é rejeitada por validação de dados
+
+  Exemplos:
+    | cpf         |
+    | 123         |
+    | 1234567890  |
+    | abcdefghijk |
+```
+
+**TC04 — Atualização com telefone inválido** · Negativo · API · CT04
+
+```gherkin
+Cenário: Telefone com menos de 10 dígitos
+  Dado que sou um cliente autenticado
+  Quando atualizo meu perfil informando um telefone com 9 dígitos
+  Então a atualização é rejeitada por validação de dados
+```
+
+**TC05 — Atualização com campos obrigatórios em branco** · Negativo · API · CT05
+
+```gherkin
+Esquema do Cenário: Campos vazios na atualização do perfil
+  Dado que sou um cliente autenticado
+  Quando atualizo meu perfil informando "<campo>" em branco
+  Então a atualização é rejeitada por validação de dados
+
+  Exemplos:
+    | campo    |
+    | nome     |
+    | endereco |
+```
+
+**TC06 — Senha (hash) nunca aparece na resposta** · Borda · API · CT06
+
+```gherkin
+Cenário: Resposta de perfil sem credenciais
+  Dado que sou um cliente autenticado
+  Quando consulto ou atualizo meu perfil
+  Então a resposta não contém o hash da senha
+```
+
+**TC07 — Aviso visual quando perfil incompleto antes de reservar** · Borda · Web · CT07
+
+```gherkin
+Cenário: Cliente sem CPF/telefone/endereço na tela de Nova Reserva
+  Dado que sou um cliente autenticado com perfil incompleto
+  Quando acesso a tela de Nova Reserva
+  Então vejo um aviso indicando os campos pendentes
+  E sou direcionado a completar o perfil antes de reservar
+```
+
+**TC08 — Tentativa de leitura sem autenticação** · Permissão · API · CT01
+
+```gherkin
+Cenário: Perfil sem token
+  Dado que não envio o cabeçalho de autenticação
+  Quando consulto o perfil
+  Então a operação é rejeitada por falta de autenticação
+```
+
+---
+
+## US11 — Detalhe de uma reserva
+
+**TC01 — Cliente consulta detalhe de reserva própria** · Positivo · Ambas · CT01, CT04
+
+```gherkin
+Cenário: Detalhe de reserva com dados completos
+  Dado que sou um cliente autenticado com uma reserva criada
+  Quando consulto o detalhe dessa reserva
+  Então recebo todos os dados da reserva, incluindo status, data, refeição, quantidade, cancelamento e entrega
+```
+
+**TC02 — Cliente tenta consultar reserva de terceiro** · Negativo · API · CT01
+
+```gherkin
+Cenário: Reserva de outro cliente
+  Dado que sou um cliente autenticado
+  E existe uma reserva pertencente a outro cliente
+  Quando tento consultar o detalhe dessa reserva
+  Então a operação é rejeitada por falta de permissão (reserva não é própria)
+```
+
+**TC03 — Administrador consulta reserva de qualquer cliente** · Positivo · API · CT02
+
+```gherkin
+Cenário: Administrador acessa qualquer reserva
+  Dado que sou um administrador autenticado
+  E existe uma reserva pertencente a um cliente
+  Quando consulto o detalhe dessa reserva
+  Então recebo todos os dados da reserva
+```
+
+**TC04 — Identificador inexistente** · Negativo · API · CT03
+
+```gherkin
+Cenário: Reserva não encontrada
+  Dado que sou um usuário autenticado
+  Quando consulto um identificador de reserva que não existe
+  Então a operação é rejeitada por recurso não encontrado
+```
+
+**TC05 — Apresentação amigável de data/hora na UI** · Borda · Web · CT05
+
+```gherkin
+Cenário: Formatação na tela de detalhe
+  Dado que estou na tela de minhas reservas
+  Quando visualizo o detalhe de uma reserva
+  Então datas e horários são apresentados em formato local legível
+```
+
+**TC06 — Tentativa de consulta sem autenticação** · Permissão · API · CT01
+
+```gherkin
+Cenário: Detalhe sem token
+  Dado que não envio o cabeçalho de autenticação
+  Quando consulto o detalhe de uma reserva
+  Então a operação é rejeitada por falta de autenticação
+```
+
+---
+
+## US12 — Listagem global pelo administrador
+
+**TC01 — Administrador lista todas as reservas com `all=true`** · Positivo · Ambas · CT01, CT04
+
+```gherkin
+Cenário: Listagem global retorna reservas de todos os clientes
+  Dado que sou um administrador autenticado
+  E existem reservas de diferentes clientes
+  Quando consulto a listagem global de reservas
+  Então recebo as reservas de todos os clientes ordenadas por data ascendente
+```
+
+**TC02 — Administrador filtra listagem global por intervalo** · Positivo · Ambas · CT02
+
+```gherkin
+Cenário: Filtros combinados com listagem global
+  Dado que sou um administrador autenticado
+  Quando consulto a listagem global filtrando por um intervalo de datas
+  Então recebo apenas reservas de quaisquer clientes dentro do intervalo
+```
+
+**TC03 — Cliente solicita listagem global** · Negativo · API · CT01, CT03
+
+```gherkin
+Cenário: Cliente recebe somente as próprias reservas
+  Dado que sou um cliente autenticado (não administrador)
+  Quando solicito a listagem global de reservas
+  Então recebo apenas as minhas reservas
+```
+
+**TC04 — Administrador sem flag global** · Borda · API · CT03
+
+```gherkin
+Cenário: Admin sem `all=true` recebe somente próprias
+  Dado que sou um administrador autenticado
+  Quando consulto reservas sem ativar a listagem global
+  Então recebo apenas as reservas que eu mesmo criei
+```
+
+**TC05 — Filtros adicionais por status na UI admin** · Positivo · Web · CT05
+
+```gherkin
+Cenário: UI administrativa filtra por status
+  Dado que estou na área administrativa com a listagem global
+  Quando aplico um filtro por status (ativa, cancelada, entregue)
+  Então a tela exibe apenas as reservas que correspondem ao status escolhido
+```
+
+**TC06 — Tentativa sem autenticação** · Permissão · API · CT01
+
+```gherkin
+Cenário: Listagem sem token
+  Dado que não envio o cabeçalho de autenticação
+  Quando consulto a listagem global de reservas
+  Então a operação é rejeitada por falta de autenticação
+```
+
+---
+
+## US13 — Histórico de cancelamentos (administrador)
+
+**TC01 — Administrador consulta o histórico completo** · Positivo · Ambas · CT01, CT03
+
+```gherkin
+Cenário: Histórico com cancelamentos de clientes e admins
+  Dado que sou um administrador autenticado
+  E existem cancelamentos feitos por clientes e por administradores
+  Quando consulto o histórico de cancelamentos
+  Então recebo a lista contendo, para cada cancelamento, o autor, o papel, o motivo e a data
+```
+
+**TC02 — Administrador filtra histórico por reserva** · Positivo · Ambas · CT02
+
+```gherkin
+Cenário: Histórico de uma reserva específica
+  Dado que sou um administrador autenticado
+  Quando consulto o histórico filtrando pelo identificador de uma reserva específica
+  Então recebo apenas os registros vinculados àquela reserva
+```
+
+**TC03 — Cliente tenta consultar o histórico** · Permissão · API · CT01
+
+```gherkin
+Cenário: Histórico restrito a admin
+  Dado que sou um cliente autenticado (não administrador)
+  Quando tento consultar o histórico de cancelamentos
+  Então a operação é rejeitada por falta de permissão (perfil insuficiente)
+```
+
+**TC04 — Visualização em tabela na UI admin** · Borda · Web · CT04
+
+```gherkin
+Cenário: Tabela amigável na área administrativa
+  Dado que estou na área administrativa, aba "Histórico"
+  Quando carrego a página
+  Então o histórico é exibido em uma tabela com colunas legíveis (autor, papel, motivo, data)
+```
+
+**TC05 — Tentativa sem autenticação** · Permissão · API · CT01
+
+```gherkin
+Cenário: Histórico sem token
+  Dado que não envio o cabeçalho de autenticação
+  Quando consulto o histórico de cancelamentos
+  Então a operação é rejeitada por falta de autenticação
+```
+
+---
+
+## US14 — Documentação interativa da API
+
+**TC01 — Especificação carregada na inicialização** · Positivo · API · CT01
+
+```gherkin
+Cenário: API sobe com a documentação atualizada
+  Dado que o arquivo "swagger.yaml" está presente em "resources"
+  Quando a API é inicializada
+  Então a documentação é carregada e disponibilizada
+```
+
+**TC02 — UI Swagger acessível** · Positivo · API · CT02
+
+```gherkin
+Cenário: Documentação navegável
+  Quando acesso o endpoint de documentação interativa
+  Então vejo a UI Swagger com todos os endpoints da Cantina API
+```
+
+**TC03 — Documento OpenAPI cru disponível** · Positivo · API · CT03
+
+```gherkin
+Cenário: Spec bruto para ferramentas externas
+  Quando solicito a especificação da API em formato OpenAPI
+  Então recebo o documento OpenAPI 3.0 da Cantina
+```
+
+**TC04 — Documentação contempla códigos de erro previstos** · Borda · API · CT04
+
+```gherkin
+Cenário: Códigos de erro documentados em cada endpoint
+  Quando consulto a documentação de qualquer endpoint
+  Então cada endpoint exibe os códigos de erro previstos (400, 401, 403, 404, 409, 423, 500)
+```
+
+---
+
+## US15 — Consultar disponibilidade de marmitas
+
+**TC01 — Consulta em dia sem reservas** · Positivo · Ambas · CT03
+
+```gherkin
+Cenário: Disponibilidade total quando não há reservas
+  Dado que sou um cliente autenticado
+  E não existe nenhuma reserva ativa para "2026-05-20"
+  Quando consulto a disponibilidade dessa data
+  Então recebo, para cada refeição, a capacidade total como "stock", "used" igual a 0 e "available" igual ao "stock"
+  E recebo o "cutoffHour" configurado para cada refeição
+```
+
+**TC02 — Consulta após reservas serem feitas** · Positivo · Ambas · CT05
+
+```gherkin
+Cenário: `used` reflete a soma das quantidades
+  Dado que sou um cliente autenticado
+  E existem reservas ativas de almoço para "2026-05-20" totalizando quantidade 4
+  Quando consulto a disponibilidade dessa data
+  Então o "used" do almoço é igual a 4
+  E o "available" do almoço é igual a "stock - used"
+```
+
+**TC03 — Reservas canceladas não consomem o estoque** · Borda · API · CT04
+
+```gherkin
+Cenário: Cancelamento libera estoque
+  Dado que sou um cliente autenticado
+  E existe uma reserva de almoço cancelada para "2026-05-20"
+  Quando consulto a disponibilidade dessa data
+  Então essa reserva cancelada não é contabilizada em "used"
+```
+
+**TC04 — Reservas entregues não consomem o estoque** · Borda · API · CT04
+
+```gherkin
+Cenário: Entregas não somam ao "used"
+  Dado que sou um cliente autenticado
+  E existe uma reserva de almoço já entregue para "2026-05-20"
+  Quando consulto a disponibilidade dessa data
+  Então essa reserva entregue não é contabilizada em "used"
+```
+
+**TC05 — Estoque esgotado refletido na disponibilidade** · Negativo · API · CT06
+
+```gherkin
+Cenário: Refeição esgotada exibe "available" igual a 0
+  Dado que sou um cliente autenticado
+  E o número de reservas ativas de jantar atingiu a capacidade máxima do dia
+  Quando consulto a disponibilidade dessa data
+  Então o "available" do jantar é 0
+```
+
+**TC06 — Data em formato inválido** · Negativo · API · CT02
+
+```gherkin
+Esquema do Cenário: Parâmetro de data inválido
+  Dado que sou um cliente autenticado
+  Quando consulto a disponibilidade com "<data>"
+  Então a consulta é rejeitada por validação de dados
+
+  Exemplos:
+    | data       |
+    | xpto       |
+    | 2026/05/20 |
+    | 31-12-2026 |
+```
+
+**TC07 — Tentativa sem autenticação** · Permissão · API · CT01
+
+```gherkin
+Cenário: Consulta sem token
+  Dado que não envio o cabeçalho de autenticação
+  Quando consulto a disponibilidade
+  Então a operação é rejeitada por falta de autenticação
+```
+
+**TC08 — Atualização visual ao mudar data** · Positivo · Web · CT07
+
+```gherkin
+Cenário: Tela recarrega ao trocar a data
+  Dado que estou na tela de Nova Reserva
+  Quando seleciono uma data diferente
+  Então a tela consulta novamente a disponibilidade e atualiza badges e totais por refeição
+```
+
+**TC09 — Indicação visual por estado** · Borda · Web · CT08
+
+```gherkin
+Esquema do Cenário: Cor do badge por faixa de disponibilidade
+  Dado que estou na tela de Nova Reserva
+  E a refeição "almoco" tem "available" igual a <available> sobre "stock" igual a <stock>
+  Quando visualizo a disponibilidade
+  Então o badge é exibido em "<cor>"
+
+  Exemplos:
+    | available | stock | cor      |
+    | 25        | 50    | verde    |
+    | 3         | 50    | âmbar    |
+    | 0         | 50    | vermelho |
+```
+
+---
+
+## Rastreabilidade
+
+### CT → TC (todas as camadas)
+
+| US | CT | Cobertura |
+|---|---:|---|
+| US01 | CT01 | TC02 |
+| US01 | CT02 | TC01 |
+| US01 | CT03 | TC03, TC04 |
+| US01 | CT04 | TC05 |
+| US01 | CT05 | TC07 |
+| US01 | CT06 | TC06 |
+| US01 | CT07 | TC08 |
+| US01 | CT08 | TC09 |
+| US01 | CT09 | TC10 |
+| US02 | CT01 | TC01, TC03, TC17 |
+| US02 | CT02 | TC04 |
+| US02 | CT03 | TC01, TC02 |
+| US02 | CT04 | TC05 |
+| US02 | CT05 | TC06 |
+| US02 | CT06 | TC07, TC08 |
+| US02 | CT07 | TC09, TC10 |
+| US02 | CT08 | TC11 |
+| US02 | CT09 | TC12, TC13 |
+| US02 | CT10 | TC01 |
+| US02 | CT11 | TC01, TC02 |
+| US02 | CT12 | TC14 |
+| US02 | CT13 | TC15 |
+| US02 | CT14 | TC16 |
+| US02 | CT15 | TC16 |
+| US03 | CT01 | TC01, TC07 |
+| US03 | CT02 | TC02 |
+| US03 | CT03 | TC03 |
+| US03 | CT04 | TC04 |
+| US03 | CT05 | TC05 |
+| US03 | CT06 | TC01 |
+| US03 | CT07 | TC01 |
+| US03 | CT08 | TC06 |
+| US04 | CT01 | TC01, TC02, TC05 |
+| US04 | CT02 | TC01 |
+| US04 | CT03 | TC03 |
+| US04 | CT04 | TC01 |
+| US04 | CT05 | TC01 |
+| US04 | CT06 | TC04 |
+| US05 | CT01 | TC01, TC02, TC06 |
+| US05 | CT02 | TC01, TC03, TC04 |
+| US05 | CT03 | TC03 |
+| US05 | CT04 | TC01 |
+| US05 | CT05 | TC05 |
+| US06 | CT01 | TC01, TC05 |
+| US06 | CT02 | TC03 |
+| US06 | CT03 | TC02 |
+| US06 | CT04 | TC04 |
+| US06 | CT05 | TC01 |
+| US06 | CT06 | TC01 |
+| US06 | CT07 | TC06 |
+| US07 | CT01 | TC01, TC02 |
+| US07 | CT02 | TC01, TC03 |
+| US07 | CT03 | TC01, TC04 |
+| US07 | CT04 | TC05 |
+| US07 | CT05 | TC06 |
+| US07 | CT06 | TC01 |
+| US07 | CT07 | TC07 |
+| US07 | CT08 | TC08 |
+| US08 | CT01 | TC01 |
+| US08 | CT02 | TC02 |
+| US08 | CT03 | TC03 |
+| US08 | CT04 | TC04 |
+| US09 | CT01 | TC01 |
+| US09 | CT02 | TC02 |
+| US09 | CT03 | TC04 |
+| US09 | CT04 | TC03, TC05 |
+| US09 | CT05 | TC06 |
+| US09 | CT06 | TC07 |
+| US09 | CT07 | TC08 |
+| US10 | CT01 | TC02, TC08 |
+| US10 | CT02 | TC01 |
+| US10 | CT03 | TC03 |
+| US10 | CT04 | TC04 |
+| US10 | CT05 | TC05 |
+| US10 | CT06 | TC06 |
+| US10 | CT07 | TC07 |
+| US11 | CT01 | TC01, TC02, TC06 |
+| US11 | CT02 | TC03 |
+| US11 | CT03 | TC04 |
+| US11 | CT04 | TC01 |
+| US11 | CT05 | TC05 |
+| US12 | CT01 | TC01, TC03, TC06 |
+| US12 | CT02 | TC02 |
+| US12 | CT03 | TC03, TC04 |
+| US12 | CT04 | TC01 |
+| US12 | CT05 | TC05 |
+| US13 | CT01 | TC03, TC05 |
+| US13 | CT02 | TC02 |
+| US13 | CT03 | TC01 |
+| US13 | CT04 | TC04 |
+| US14 | CT01 | TC01 |
+| US14 | CT02 | TC02 |
+| US14 | CT03 | TC03 |
+| US14 | CT04 | TC04 |
+| US15 | CT01 | TC07 |
+| US15 | CT02 | TC06 |
+| US15 | CT03 | TC01 |
+| US15 | CT04 | TC03, TC04 |
+| US15 | CT05 | TC02 |
+| US15 | CT06 | TC05 |
+| US15 | CT07 | TC08 |
+| US15 | CT08 | TC09 |
+
+### Cenário Gherkin do README → TC
+
+| US | Cenário do README | Cobertura |
+|---|---|---|
+| US01 | Login com credenciais válidas | TC01 |
+| US01 | Login com senha incorreta | TC03 |
+| US01 | Login com e-mail não cadastrado | TC04 |
+| US01 | Bloqueio após cinco tentativas inválidas consecutivas | TC05 |
+| US01 | Login bloqueado por e-mail ainda não confirmado | TC07 |
+| US01 | Login sem informar campos obrigatórios | TC02 |
+| US02 | Reserva válida para refeição futura | TC01 |
+| US02 | Tentativa de reservar para data passada | TC06 |
+| US02 | Reserva no mesmo dia após o horário de corte da refeição | TC07 |
+| US02 | Reserva de jantar para hoje após o corte do almoço (mas antes do corte do jantar) | TC08 |
+| US02 | Cliente reserva múltiplas marmitas em uma mesma reserva | TC02 |
+| US02 | Cliente excede o limite diário de marmitas somando quantidades | TC09 |
+| US02 | Cliente respeita o limite diário usando quantidade | TC10 |
+| US02 | Quantidade inválida (zero ou não-inteiro) | TC05 |
+| US02 | Cliente tenta duplicar a mesma refeição no dia | TC11 |
+| US02 | Estoque do almoço esgotado em uma data | TC12 |
+| US02 | Quantidade pedida maior do que o estoque restante | TC12 |
+| US02 | Estoque do almoço esgotado não impede reserva de jantar | TC13 |
+| US02 | Cliente sem perfil completo tenta reservar | TC04 |
+| US02 | Tipos de refeição aceitos | TC03 |
+| US03 | Cancelamento antes do horário de corte | TC01 |
+| US03 | Tentativa de cancelar reserva de outro cliente | TC02 |
+| US03 | Cancelamento após o horário de corte da refeição | TC03 |
+| US03 | Tentativa de cancelar reserva já entregue | TC04 |
+| US03 | Tentativa de cancelar uma reserva já cancelada | TC05 |
+| US04 | Cliente consulta suas reservas em um intervalo | TC01 |
+| US04 | Cliente não enxerga reservas de terceiros | TC02 |
+| US04 | Status visível em cada reserva | TC01 |
+| US04 | Filtro com intervalo em formato inválido | TC03 |
+| US05 | Administrador marca reserva ativa como entregue | TC01 |
+| US05 | Cliente tenta marcar uma reserva como entregue | TC02 |
+| US05 | Tentativa de entregar uma reserva já entregue | TC03 |
+| US05 | Tentativa de entregar uma reserva cancelada | TC04 |
+| US06 | Administrador cancela reserva com motivo | TC01 |
+| US06 | Administrador cancela reserva após o horário de corte | TC02 |
+| US06 | Administrador tenta cancelar sem informar motivo | TC03 |
+| US06 | Administrador tenta cancelar reserva já entregue | TC04 |
+| US06 | Cliente tenta usar a operação administrativa de cancelamento | TC05 |
+| US07 | Cadastro válido | TC01 |
+| US07 | Cadastro com e-mail já utilizado | TC05 |
+| US07 | Cadastro com e-mail em formato inválido | TC03 |
+| US07 | Cadastro com senha curta | TC04 |
+| US07 | Cadastro com nome em branco | TC02 |
+| US07 | Validação dos campos obrigatórios | TC02, TC03, TC04 |
+| US08 | Confirmação de e-mail com token válido | TC01 |
+| US08 | Tentativa de confirmação com token inválido | TC02 |
+| US08 | Reuso de token já consumido | TC03 |
+| US08 | Login bloqueado para conta sem confirmação | TC07 (US07) |
+| US09 | Solicitação de recuperação de senha bem-sucedida | TC01 |
+| US09 | Redefinição de senha com token válido | TC03 |
+| US09 | Recuperação para e-mail não cadastrado | TC02 |
+| US09 | Redefinição com token expirado | TC04 |
+| US09 | Redefinição com nova senha curta | TC05 |
+| US09 | Redefinição desbloqueia usuário bloqueado | TC07 |
+| US10 | Atualização de perfil bem-sucedida | TC01 |
+| US10 | CPF inválido na atualização de perfil | TC03 |
+| US10 | Telefone inválido na atualização de perfil | TC04 |
+| US10 | Endereço em branco na atualização de perfil | TC05 |
+| US10 | Senha nunca é exposta nas respostas de perfil | TC06 |
+| US10 | Validação de campos do perfil | TC03, TC04, TC05 |
+| US11 | Cliente consulta detalhe de reserva própria | TC01 |
+| US11 | Cliente tenta consultar reserva de terceiros | TC02 |
+| US11 | Consulta a reserva inexistente | TC04 |
+| US11 | Administrador consulta reserva de qualquer cliente | TC03 |
+| US12 | Administrador lista todas as reservas | TC01 |
+| US12 | Administrador filtra a listagem global por intervalo de datas | TC02 |
+| US12 | Cliente solicita a listagem global | TC03 |
+| US12 | Administrador sem o parâmetro global | TC04 |
+| US13 | Administrador consulta o histórico completo | TC01 |
+| US13 | Administrador filtra histórico por uma reserva específica | TC02 |
+| US13 | Cliente tenta consultar o histórico | TC03 |
+| US13 | Histórico contém motivo do administrador | TC01 |
+| US14 | Acessar a UI da documentação Swagger | TC02 |
+| US14 | Obter a especificação OpenAPI bruta | TC03 |
+| US14 | Documentação contempla códigos de erro | TC04 |
+| US15 | Consulta de disponibilidade em uma data sem reservas | TC01 |
+| US15 | Consulta de disponibilidade após reservas serem feitas | TC02 |
+| US15 | Reservas canceladas não consomem o estoque exibido | TC03 |
+| US15 | Reservas entregues não consomem o estoque exibido | TC04 |
+| US15 | Estoque esgotado é refletido na disponibilidade | TC05 |
+| US15 | Consulta sem autenticação | TC07 |
+| US15 | Consulta com data em formato inválido | TC06 |
+
+---
+
+## Resumo de cobertura
+
+### TCs por User Story
+
+| US | Total |
+|---|---:|
+| US01 — Login de usuário | 10 |
+| US02 — Cadastro de reservas | 17 |
+| US03 — Cancelamento de reservas (cliente) | 7 |
+| US04 — Consultar reservas por data | 5 |
+| US05 — Marcar como entregue (admin) | 6 |
+| US06 — Cancelamento pelo administrador | 6 |
+| US07 — Cadastro de cliente | 8 |
+| US08 — Confirmação de cadastro por e-mail | 4 |
+| US09 — Recuperação de senha | 8 |
+| US10 — Gerenciamento do próprio perfil | 8 |
+| US11 — Detalhe de uma reserva | 6 |
+| US12 — Listagem global pelo administrador | 6 |
+| US13 — Histórico de cancelamentos | 5 |
+| US14 — Documentação interativa da API | 4 |
+| US15 — Consultar disponibilidade | 9 |
+| **Total** | **109** |
+
+### TCs por Tipo
+
+| Tipo | Total |
+|---|---:|
+| Positivo | 38 |
+| Negativo | 39 |
+| Borda | 18 |
+| Permissão | 14 |
+| **Total** | **109** |
