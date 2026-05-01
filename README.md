@@ -31,13 +31,20 @@ A API expõe a documentação OpenAPI 3 (Swagger) em `/api-docs`, baseada no arq
 - **Axios** — cliente HTTP com interceptors centralizados
 - **Tailwind CSS** — estilização utilitária
 
+### Testes
+- **Mocha + Chai + Supertest** — testes de API (camada HTTP)
+- **@playwright/test** (TypeScript) — testes E2E (camada Web)
+
+### CI/CD
+- **GitHub Actions** — `api.yml` e `e2e.yml` com selective testing por path
+
 ---
 
 ## Estrutura de pastas
 
 ```
 Cantina/
-├── package.json                   # Backend (Express)
+├── package.json                   # Backend (Express) + scripts de teste e CI
 ├── server.js                      # Bootstrap: inicia o servidor
 ├── README.md
 ├── resources/
@@ -68,10 +75,32 @@ Cantina/
 │   │   ├── index.js
 │   │   ├── auth.routes.js
 │   │   ├── user.routes.js
-│   │   └── reservation.routes.js
+│   │   ├── reservation.routes.js
+│   │   └── test.routes.js         # POST /test/reset — disponível só em NODE_ENV=test
 │   └── utils/
 │       ├── AppError.js            # Erro de aplicação com status/code
 │       └── dateUtils.js           # Helpers de data (corte, hoje, ISO)
+├── test/                          # Testes de API (Mocha + Supertest)
+│   ├── .mocharc.cjs
+│   ├── env/
+│   │   └── .env.example
+│   ├── helpers/
+│   │   ├── env.js                 # Carrega test/env/.env.<TEST_ENV>
+│   │   └── http.js                # Wrapper supertest com BASE_URL
+│   └── api/                       # Specs por User Story
+├── playwright/                    # Testes E2E (Playwright + TypeScript)
+│   ├── playwright.config.ts
+│   ├── env/
+│   │   └── .env.example
+│   ├── support/
+│   │   ├── fixtures.ts
+│   │   ├── helpers.ts
+│   │   └── actions/
+│   └── specs/                     # Specs por User Story (us01 → us15)
+├── .github/
+│   └── workflows/
+│       ├── api.yml                # CI: testes de API com path filter
+│       └── e2e.yml                # CI: testes E2E com path filter
 └── frontend/                      # Aplicação Web (Vue 3 + Tailwind)
     ├── package.json
     ├── vite.config.js             # Proxy /api -> http://localhost:3000
@@ -96,6 +125,8 @@ No frontend, a divisão em **services → stores → components/views** mantém 
 
 ## Como executar
 
+### API (backend)
+
 ```bash
 # 1. Instalar dependências
 npm install
@@ -107,7 +138,17 @@ cp .env.example .env
 npm start
 ```
 
-A API sobe por padrão em `http://localhost:3000`. A documentação Swagger fica em `http://localhost:3000/api-docs`.
+A API sobe em `http://localhost:3000`. A documentação Swagger fica em `http://localhost:3000/api-docs`.
+
+### Frontend (Web)
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+O frontend sobe em `http://localhost:5173` e conecta automaticamente à API via proxy.
 
 ### Usuários pré-cadastrados (seed)
 
@@ -300,6 +341,34 @@ curl "http://localhost:3000/reservations/availability?date=2026-05-15" \
 
 ---
 
+## Testes de API (Mocha / Supertest)
+
+A suíte de API cobre os TCs com Camada **API** ou **Ambas** — 104 testes distribuídos por User Story.
+
+### Como executar
+
+```bash
+# Pré-requisito: API rodando em http://localhost:3000
+npm start
+
+# Em outro terminal — todos os testes (ambiente dev)
+npm test
+
+# Por ambiente
+npm run test:dev
+npm run test:hml
+
+# Apenas uma User Story (ex.: US01)
+npm run test:us -- --grep "US01"
+
+# Relatório HTML (mochawesome)
+npm run test:report
+```
+
+> Os testes de API precisam da API rodando antes de serem executados. O `BASE_URL` é lido de `test/env/.env.dev`.
+
+---
+
 ## Testes E2E (Playwright)
 
 A suíte E2E cobre todos os TCs com Camada **Web** ou **Ambas** do documento de casos de teste — 41 testes distribuídos em 14 arquivos de spec, um por User Story.
@@ -399,6 +468,21 @@ npm run e2e:report
 ### Isolamento entre testes
 
 Cada `beforeEach` chama `POST /test/reset` (endpoint exclusivo `NODE_ENV=test`), que limpa o banco em memória e re-executa o seed. Setup de estado complexo (criar reservas, completar perfil) é feito via chamadas diretas à API (`loginViaAPI`, `createReservationViaAPI`, `updateProfileViaAPI`) — sem passar pela UI — para manter os testes rápidos e determinísticos.
+
+---
+
+## CI/CD (GitHub Actions)
+
+Dois workflows com **selective testing por path** — só executa o que foi alterado no PR:
+
+| Workflow | Arquivo | Dispara quando muda |
+|----------|---------|---------------------|
+| API Tests | `.github/workflows/api.yml` | `src/`, `test/`, `server.js`, `package.json`, `swagger.yaml` |
+| E2E Tests | `.github/workflows/e2e.yml` | `frontend/`, `playwright/`, `src/`, `server.js`, `package.json` |
+
+Em **push para `main`** ambos os workflows executam sempre (full CI).
+
+O relatório HTML do Playwright é publicado como artefato por 7 dias — acessível na aba **Actions** do GitHub mesmo quando há falhas.
 
 ---
 
