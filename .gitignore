@@ -7,3 +7,9 @@ yarn-error.log*
 *.log
 .vscode/
 .idea/
+
+# Testes
+test/env/.env.dev
+test/env/.env.hml
+test/env/.env.prod
+test/reports/

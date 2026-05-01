@@ -2,10 +2,11 @@ Objetivo
 Criar testes automatizados Web para User Story contidas no readme.md
 
 Contexto
-- As User Stories e seus critérios e regras estão no no readme.md
-- Os casos de testes estão no arquivo 8 - casos de teste.txt
-- As condições de teste estão no arquivo "4 - condições de teste.txt"
+- As User Stories e seus critérios e regras estão no README.md
+- Os casos de teste estão no arquivo "7 - Casos de Teste.txt" — em formato Gherkin com cabeçalho de metadados (TC ID, Tipo, Camada, CTs cobertas).
+- As condições de teste estão no arquivo "4 - Condições de Teste.txt"
 - Você conseguirá os locators da aplicação Web na própria aplicação que está em ./frontend/
+- Mensagens de erro do front aparecem como toasts globais; os títulos por categoria estão em ./frontend/src/services/http.js (função titleFromStatus): "Dados inválidos" (400), "Não autorizado" (401), "Acesso negado" (403), "Não encontrado" (404), "Conflito" (409), "Conta bloqueada" (423), "Erro no servidor" (5xx).
 - Diferenciação de casos de teste e condições de teste:
   Casos são detalhados, condições de teste são mais genéricas, por exemplo:
    A regra de negócios "Deve ser possível filtrar os agendamentos por período (ex: dia, semana, mês) e por status."
@@ -15,18 +16,38 @@ Use o projeto velo
 
 Regras
 - Usaremos playwright para escrita dos testes automatizados Web
-- Se a estrutura de automação de testes com as ferramentas mencionadas ainda não estiver pronto, crie ela
-- Escreva apenas os testes automatizados que cobrirão os casos de teste das user stories
+- Se a estrutura de automação de testes com as ferramentas mencionadas ainda não estiver pronta, crie ela
+- Escopo: cobrir apenas casos de teste cuja Camada seja "Ambas" ou "Web". Casos com Camada "API" estão fora do escopo (ficam para a suíte Mocha/Chai/Supertest do prompt 8).
+- Cada test deve referenciar o TC ID no nome, no padrão "TCxx — <título do caso> (CTzz, CTww)". Para casos parametrizados (Esquema do Cenário), implementar como Data Driven com nome indicando a parametrização (ex.: "TC05 — quantidade inválida [quantidade=0]").
+- Asserir erros por categoria (título do toast, lista acima) por padrão. Asserir o conteúdo literal da mensagem do toast apenas quando o caso de teste explicita a mensagem entre aspas no "Então".
 - Gere relatório de execução de testes em HTML
-- Crie uma estrutura escalável e bem organizada utilizando padrão de projeto actions fixtures no playwright
-- crie a conexão de maneira que eu possa só trocar a URL e mudar de um ambiente de dev, homologação ou produção.
+- Crie uma estrutura escalável e bem organizada utilizando padrão de projeto actions + fixtures no playwright (Page Objects + Actions de alto nível + Fixtures via test.extend)
+- Multi-ambiente: seguir o mesmo esquema da suíte de API (prompt 8) — um arquivo .env por ambiente em `e2e/env/`:
+    - `e2e/env/.env.example` (versionado, modelo)
+    - `e2e/env/.env.dev` (gitignored)
+    - `e2e/env/.env.hml` (gitignored)
+    - `e2e/env/.env.prod` (gitignored, ALLOW_DESTRUCTIVE=false)
+  Variável `TEST_ENV=dev|hml|prod` (default `dev`) seleciona qual arquivo carregar. Um helper `e2e/helpers/env.ts` lê `TEST_ENV` e carrega o `.env.<TEST_ENV>` via dotenv antes de qualquer test (configurar em `globalSetup` do playwright.config).
+  Variáveis padrão por arquivo: `BASE_URL` (frontend), `API_BASE_URL` (backend), `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `CLIENT_EMAIL`, `CLIENT_PASSWORD`, `ENV_NAME`, `ALLOW_DESTRUCTIVE`.
+  npm scripts:
+    - `"e2e": "TEST_ENV=dev playwright test"`
+    - `"e2e:dev": "TEST_ENV=dev playwright test"`
+    - `"e2e:hml": "TEST_ENV=hml playwright test"`
+    - `"e2e:prod": "TEST_ENV=prod playwright test --grep-invert '@destructive'"`
+    - `"e2e:report": "playwright show-report reports"`
+    - `"e2e:us": "playwright test --grep"` (uso: `TEST_ENV=hml npm run e2e:us -- 'US02'`)
+  Para Windows/PowerShell, usar `cross-env` (incluir nas devDependencies): `"e2e:hml": "cross-env TEST_ENV=hml playwright test"`.
+  Em CI, o pipeline define as variáveis a partir dos secrets — neste caso, criar o arquivo `.env.<TEST_ENV>` no runner antes de executar (ou ler diretamente de `process.env` quando o helper detectar que está em CI).
+- Tag `@destructive` no nome dos tests que alteram estado de forma irreversível (ex.: bloquear conta após 5 tentativas). Quando `ALLOW_DESTRUCTIVE=false` (caso típico de prod), rodar com `--grep-invert '@destructive'` (já incluído no script `e2e:prod`).
 
 Passo a Passo da Execução:
 1. Leia as user stories e respectivos critérios de aceite que estão no README.md
-2. Leia as condições de teste do arquivo "3 - Condições de Teste.txt"
-3. Leia o swagger.yaml que está em ./resources/ para obter mais informações
-4. Leia o arquivo .env para informações de conexão das aplicações web e api
-5. Identifique se precisamos instalar as bibliotecas para construção dos testes automatizados Web
-6. Certifique que leu todos os arquivos e pastas indicados, incluindo o "8 - casos de teste.txt"
-8. Use os casos de teste do arquivo "8 - casos de teste.txt" para então gerar os testes automatizados Web usando como modelo o padrão de projeto actions fixtures playwright que foi implementado no projeto "C:\Projetos\Turma3\velo"  
-9. Execute os testes automatizados Web para verificar se foram escritos como deveriam
+2. Leia as condições de teste do arquivo "4 - Condições de Teste.txt"
+3. Leia os casos de teste do arquivo "7 - Casos de Teste.txt" — esta é a fonte primária. Filtre os casos cuja Camada seja "Ambas" ou "Web".
+4. Leia o swagger.yaml que está em ./resources/ para entender o contrato dos endpoints (útil para preparar estado via API direta nos testes).
+5. Leia o arquivo .env (se existir) para informações de conexão das aplicações web e api.
+6. Inspecione ./frontend/src/views/ e ./frontend/src/components/ para identificar locators (preferir getByRole/getByLabel/getByText; sugerir adição de data-testid quando não houver opção semântica).
+7. Identifique se precisamos instalar as bibliotecas para construção dos testes automatizados Web (@playwright/test).
+8. Use os casos de teste do arquivo "7 - Casos de Teste.txt" para gerar os testes automatizados Web, usando como modelo o padrão actions + fixtures Playwright implementado no projeto "D:\Weberth\Mentoria\Turma 3\PPP\velo" (e possíveis melhorias).
+9. Garanta que cada test tem nome no padrão "TCxx — <título do caso> (CTzz)" e que TCs de Camada "API" foram pulados (não incluídos).
+10. Execute os testes automatizados Web para verificar se foram escritos como deveriam, e gere o relatório HTML.

@@ -6,16 +6,14 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "echo \"No tests configured\" && exit 0"
+    "test": "cross-env TEST_ENV=dev mocha --config test/.mocharc.cjs 'test/api/**/*.spec.js'",
+    "test:dev": "cross-env TEST_ENV=dev mocha --config test/.mocharc.cjs 'test/api/**/*.spec.js'",
+    "test:hml": "cross-env TEST_ENV=hml mocha --config test/.mocharc.cjs 'test/api/**/*.spec.js'",
+    "test:prod": "cross-env TEST_ENV=prod mocha --config test/.mocharc.cjs --grep '@destructive' --invert 'test/api/**/*.spec.js'",
+    "test:report": "cross-env TEST_ENV=dev mocha --config test/.mocharc.cjs --reporter mochawesome --reporter-options reportDir=test/reports,reportFilename=index 'test/api/**/*.spec.js'",
+    "test:us": "cross-env TEST_ENV=dev mocha --config test/.mocharc.cjs 'test/api/**/*.spec.js' --grep"
   },
-  "keywords": [
-    "api",
-    "rest",
-    "express",
-    "cantina",
-    "reservas",
-    "marmitas"
-  ],
+  "keywords": ["api", "rest", "express", "cantina", "reservas", "marmitas"],
   "author": "Weberth Machado",
   "license": "MIT",
   "dependencies": {
@@ -27,5 +25,13 @@
     "swagger-ui-express": "^5.0.0",
     "uuid": "^9.0.1",
     "yamljs": "^0.3.0"
+  },
+  "devDependencies": {
+    "chai": "^4.5.0",
+    "cross-env": "^7.0.3",
+    "mocha": "^10.7.3",
+    "mochawesome": "^7.1.3",
+    "sinon": "^19.0.2",
+    "supertest": "^7.0.0"
   }
 }

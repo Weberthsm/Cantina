@@ -77,6 +77,13 @@ module.exports = {
     // Mantido para retrocompatibilidade em logs/exibições genéricas.
     cutoffHour: legacyCutoff ?? 10,
     maxFailedLoginAttempts: 5,
+    /**
+     * Tempo de vida (em milissegundos) do token de recuperação de senha.
+     * Padrão: 30 minutos (1800000 ms). Configurável via RECOVERY_TOKEN_TTL_MS
+     * — útil para reduzir em testes automatizados.
+     */
+    recoveryTokenTtlMs:
+      parseIntOrUndefined(process.env.RECOVERY_TOKEN_TTL_MS) ?? 30 * 60 * 1000,
   },
   reservationStatus: {
     ACTIVE: 'ativa',

@@ -257,6 +257,54 @@ Registro das decisões técnicas e de processo tomadas ao longo da construção 
     - Todo cenário Gherkin do README deve ter ≥ 1 TC.
     - Cada US com endpoint autenticado/restrito tem ≥ 1 caso de Permissão.
 
+### 5.10 Geração dos Casos de Teste (artefato `7 - Casos de Teste.txt`)
+
+- **Contexto:** Aplicar o prompt 6 às 15 User Stories.
+- **Decisão:** documento único com 109 TCs cobrindo todas as 15 USs.
+    - Distribuição por tipo: 38 Positivos, 39 Negativos, 18 Borda, 14 Permissão.
+    - 9 casos parametrizados via `Esquema do Cenário` (campos obrigatórios, quantidade inválida, formatos de e-mail/CPF/data, motivo em branco, faixa de cores).
+    - Mensagens literais usadas só nos TCs onde o número/limite faz parte do contrato (ex.: limite diário, estoque insuficiente).
+- **Trade-offs:** documento extenso (>800 linhas), mas com rastreabilidade completa (CT→TC e Cenário Gherkin→TC).
+- **Quando revisitar:** quando uma US ganhar nova regra que altere o conjunto de cenários — o ideal é reaplicar o prompt 6 só para a US afetada.
+
+### 5.11 Escopo separado por suíte de testes (API vs Web)
+
+- **Contexto:** Cada TC tem Camada `Ambas`/`API`/`Web`. Precisamos definir qual suíte automatiza o quê.
+- **Decisão:**
+    - Suíte de **API** (Mocha/Chai/Supertest, prompt 8) cobre TCs de Camada `API` + `Ambas`.
+    - Suíte **Web** (Playwright, prompt 10) cobre TCs de Camada `Web` + `Ambas`.
+    - TCs `Ambas` são exercitados em **ambas** as suítes — cada uma com seu binding (chamada HTTP no back vs interação UI no front).
+- **Trade-offs:** TCs `Ambas` ficam duplicados no esforço de execução, mas cada suíte testa o seu lado. Não há duplicação no documento de casos.
+- **Quando revisitar:** se o tempo de execução de TCs `Ambas` virar gargalo — aí pode-se optar por executar `Ambas` só na API (ganho de velocidade) e cobrir o lado UI via smoke tests no Web.
+
+### 5.12 Tag `@destructive` para testes que alteram estado de forma irreversível
+
+- **Contexto:** Rodar testes em ambientes compartilhados (homologação, produção) sem corromper dados.
+- **Decisão:** tests que alteram estado irreversível (ex.: bloquear conta após 5 tentativas inválidas) recebem tag `@destructive` no nome do `it`/`test`. Em ambientes onde `ALLOW_DESTRUCTIVE=false`, esses testes são pulados via `--grep` invertido.
+- **Trade-offs:** menos cobertura em prod. Aceito porque prod nunca é o lugar de testar fluxos destrutivos completos.
+
+### 5.13 Multi-ambiente nos testes (modelo multi-arquivo + `TEST_ENV`)
+
+- **Contexto:** Necessidade de rodar a mesma suíte contra dev, hml e prod sem alterar o código dos testes.
+- **Alternativas:**
+    - **A (atual):** múltiplos `.env` (`.env.dev`, `.env.hml`, `.env.prod`) + variável `TEST_ENV` selecionando qual carregar via helper.
+    - **B (mais simples, 12-Factor):** apenas `process.env`, com um único `.env` local opcional e secrets do CI injetando direto. Discutido e ficou pendente de implementação.
+- **Decisão atual:** modelo A em ambas as suítes (`test/env/` para a API, `e2e/env/` para a Web). Mesmo conjunto de variáveis (`BASE_URL`, credenciais, `ALLOW_DESTRUCTIVE`). Scripts npm dedicados (`test:dev`, `test:hml`, `test:prod`; `e2e:dev`, `e2e:hml`, `e2e:prod`). Em CI, o pipeline cria o `.env.<TEST_ENV>` no runner ou injeta direto em `process.env`.
+- **Trade-offs:** mais arquivos para manter, mas a troca de ambiente fica trivial localmente (`npm run test:hml`).
+- **Quando revisitar:** ao configurar o CI/CD pela primeira vez. Avaliar migração para o modelo B (mais simples, alinhado a 12-Factor) caso o time prefira.
+
+### 5.14 Stack Playwright para a suíte Web
+
+- **Contexto:** Definir o framework de E2E e o padrão arquitetural.
+- **Alternativas:** Cypress (popular, opinionado), Playwright (moderno, multi-browser), TestCafé.
+- **Decisão:** Playwright com padrão **Page Objects + Actions + Fixtures**:
+    - Page Objects encapsulam locators e interações básicas.
+    - Actions descrevem ações de usuário em alto nível compostas a partir das pages (ex.: `criarReservaDeAlmoco`).
+    - Fixtures via `test.extend()` injetam contextos prontos (ex.: `clientPage` já logada, `apiClient` autenticado).
+    - Nome dos tests: `TCxx — Título (CTzz)` para rastreabilidade direta com o doc de casos.
+- **Trade-offs:** Playwright tem curva inicial maior que Cypress, mas multi-browser nativo, melhor isolamento e auto-wait robusto.
+- **Quando revisitar:** se o time já dominar Cypress e a multi-browser não for crítica.
+
 ---
 
 ## 6. CI/CD e estrutura futura
@@ -292,14 +340,16 @@ Registro das decisões técnicas e de processo tomadas ao longo da construção 
 
 - **Decisão:** prompts numerados sequencialmente em `Prompts/Planejamento e criação do software/`. Ao inserir um prompt entre dois existentes, **renumerar +1** todos os subsequentes para preservar a ordem do fluxo.
 - **Aplicação atual:**
-    - 1 — Planejamento de software (user stories)
-    - 2 — Criação da API
-    - 3 — Criação dos cenários Gherkin
+    - 1 — Prompt planejamento software (user stories)
+    - 2 — Prompt criação api
+    - 3 — Prompt criação cenários gherkin
     - 4 — Condições de Teste (artefato gerado)
     - 5 — Prompt criação de condições de teste
-    - 6 — Prompt criação de casos de teste (atual)
-    - 7 — Prompt criação de testes API específico
-    - 8 — Criando frontend
+    - 6 — Prompt criação de casos de teste
+    - 7 — Casos de Teste (artefato gerado)
+    - 8 — Prompt de criação de testes api específico (Mocha/Chai/Supertest)
+    - 9 — Criando frontend
+    - 10 — Prompt criação de testes automatizados com Playwright
 - **Trade-offs:** renumeração mexe nos paths. Aceitável quando o número de arquivos é pequeno (< 20).
 
 ### 7.2 Localização dos artefatos derivados
@@ -323,6 +373,10 @@ Registro das decisões técnicas e de processo tomadas ao longo da construção 
 | 2026-04-30  | Decisão sobre format dos casos de teste: Gherkin, layer-aware com escape, asserção por categoria. |
 | 2026-04-30  | Plano de CI/CD com selective testing; estrutura futura `apps/api + apps/web` registrada. |
 | 2026-04-30  | Decisão "Opção C" registrada para Gherkin em README + casos doc; pendência de revisitar. |
+| 2026-04-30  | Prompt 6 finalizado e executado: artefato `7 - Casos de Teste.txt` produzido com 109 TCs (15 USs). |
+| 2026-04-30  | Prompts renumerados após inserção do prompt 6 (antigo 7→8 testes API; antigo 8→9 frontend). |
+| 2026-04-30  | Prompt 8 (Mocha/Chai/Supertest) reescrito: TC IDs nos nomes, asserção por categoria, multi-ambiente via `TEST_ENV`, tag `@destructive`. |
+| 2026-04-30  | Prompt 10 (Playwright) ajustado: escopo Camada `Ambas`+`Web`, multi-ambiente espelhando o prompt 8, TC IDs nos nomes, padrão Page Objects + Actions + Fixtures. |
 
 ---
 
@@ -337,3 +391,5 @@ Registro das decisões técnicas e de processo tomadas ao longo da construção 
 - [ ] **Persistência real (banco)** em algum momento (§ 1.3).
 - [ ] **Reavaliar Opção A/B/C** para Gherkin no README (§ 4.4).
 - [ ] **Vitest** vs Mocha quando o time se sentir confortável (§ 5.1).
+- [ ] **Modelo multi-ambiente nos testes** (§ 5.13): avaliar migração do multi-arquivo + `TEST_ENV` para o modelo 12-Factor (`process.env` puro) ao configurar o CI/CD pela primeira vez.
+- [ ] **Estratégia de execução dos TCs `Ambas`** (§ 5.11): considerar rodar `Ambas` apenas na suíte API se o tempo de execução virar gargalo no Web.
