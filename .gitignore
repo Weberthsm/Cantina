@@ -1,5 +1,5 @@
 node_modules/
-.env
+#.env # Não ignorado intencionalmente para facilitar o desenvolvimento, mas pode ser adicionado se necessário
 .DS_Store
 npm-debug.log*
 yarn-debug.log*
@@ -7,9 +7,23 @@ yarn-error.log*
 *.log
 .vscode/
 .idea/
+.vs/
 
-# Testes
-test/env/.env.dev
-test/env/.env.hml
-test/env/.env.prod
+# Testes API
+#test/env/.env.dev
+#test/env/.env.hml
+#test/env/.env.prod
 test/reports/
+
+# Testes E2E
+#playwright/env/.env.dev
+#playwright/env/.env.hml
+#playwright/env/.env.prod
+#playwright/playwright-report/
+test-results/
+
+# Ambiente
+#.env
+
+# Ferramentas locais
+.claude/

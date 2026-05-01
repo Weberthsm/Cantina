@@ -214,6 +214,7 @@ async function submit() {
               v-if="statusFor(opt.value)"
               class="badge mt-2 border"
               :class="toneClasses[statusFor(opt.value).tone]"
+              :data-testid="`availability-badge-${opt.value}`"
             >
               {{ statusFor(opt.value).label }}
             </span>
@@ -249,6 +250,7 @@ async function submit() {
             min="1"
             :max="maxQuantity || 1"
             class="input text-center w-20"
+            data-testid="quantity-input"
             :disabled="maxQuantity === 0"
           />
           <button

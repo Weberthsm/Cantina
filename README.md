@@ -297,6 +297,108 @@ curl "http://localhost:3000/reservations/availability?date=2026-05-15" \
 
 ---
 
+## Testes E2E (Playwright)
+
+A suíte E2E cobre todos os TCs com Camada **Web** ou **Ambas** do documento de casos de teste — 41 testes distribuídos em 14 arquivos de spec, um por User Story.
+
+### Stack
+
+- **@playwright/test** (TypeScript) — framework de E2E
+- Padrão **Page Actions + Fixtures** (`test.extend`) — mesmo padrão do projeto de referência Velo
+- Multi-ambiente via `playwright/env/.env.dev|hml|prod`
+- Reporter HTML nativo do Playwright
+
+### Estrutura
+
+```
+playwright/
+├── playwright.config.ts          # Config principal (timeout, reporter, baseURL, webServer)
+├── tsconfig.json
+├── env/
+│   ├── .env.example
+│   ├── .env.dev                  # BASE_URL, API_BASE_URL, credenciais
+│   └── .env.hml
+├── support/
+│   ├── fixtures.ts               # test.extend com auth, reservation, profile, admin
+│   ├── helpers.ts                # resetApp(), uniqueEmail(), tomorrow(), loginViaAPI(), ...
+│   └── actions/
+│       ├── authActions.ts        # login, register, forgotPassword, resetPassword, confirmEmail
+│       ├── reservationActions.ts # nova reserva, listar, cancelar, filtrar, disponibilidade
+│       ├── profileActions.ts     # ver perfil, atualizar perfil
+│       └── adminActions.ts       # marcar entregue, cancelar admin, histórico, filtros
+└── specs/
+    ├── us01-login/
+    ├── us02-cadastro-reservas/
+    ├── us03-cancelamento-cliente/
+    ├── us04-consulta-reservas/
+    ├── us05-marcar-entregue/
+    ├── us06-cancelamento-admin/
+    ├── us07-cadastro-cliente/
+    ├── us08-confirmacao-email/
+    ├── us09-recuperacao-senha/
+    ├── us10-perfil/
+    ├── us11-detalhe-reserva/
+    ├── us12-listagem-global-admin/
+    ├── us13-historico-cancelamentos/
+    └── us15-disponibilidade/
+```
+
+### Pré-requisitos
+
+**1. Instalar dependências** (necessário apenas uma vez após clonar ou atualizar o projeto):
+
+```bash
+npm install
+```
+
+**2. Instalar os browsers do Playwright** (necessário apenas uma vez, ou após atualizar o `@playwright/test`):
+
+```bash
+# Sempre use o binário local para garantir a versão correta
+node_modules\.bin\playwright install
+```
+
+> ⚠️ **Não use `npx playwright install`** — ele pode instalar uma versão diferente da exigida pelo projeto e deixar de instalar o `Chrome Headless Shell` necessário para o modo padrão (headless).
+
+**3. Preparar o arquivo de ambiente** (necessário apenas uma vez):
+
+```bash
+cp playwright/env/.env.example playwright/env/.env.dev
+# Edite playwright/env/.env.dev se necessário (as credenciais padrão já são as do seed)
+```
+
+**4. Liberar a porta 3000**
+
+O Playwright sobe o backend automaticamente com `NODE_ENV=test`. Se houver outro processo usando a porta 3000 (ex.: servidor iniciado pelo VS Code), a execução falhará com um erro de porta ocupada. Encerre-o antes de rodar os testes.
+
+### Como executar
+
+```bash
+# Todos os testes — o Playwright sobe o backend e o frontend automaticamente
+npm run e2e
+
+# Com o browser visível (modo headed — útil para depurar)
+npm run e2e:headed
+
+# Por ambiente
+npm run e2e:dev
+npm run e2e:hml
+
+# Apenas uma User Story (ex.: US01)
+npm run e2e:us -- --grep "US01"
+
+# Abrir relatório HTML da última execução
+npm run e2e:report
+```
+
+> O Playwright inicia o backend (`node server.js` com `NODE_ENV=test`) e o frontend (`npm run dev`) antes dos testes e os encerra ao terminar. Não é necessário subir nada manualmente.
+
+### Isolamento entre testes
+
+Cada `beforeEach` chama `POST /test/reset` (endpoint exclusivo `NODE_ENV=test`), que limpa o banco em memória e re-executa o seed. Setup de estado complexo (criar reservas, completar perfil) é feito via chamadas diretas à API (`loginViaAPI`, `createReservationViaAPI`, `updateProfileViaAPI`) — sem passar pela UI — para manter os testes rápidos e determinísticos.
+
+---
+
 # User Stories - Sistema de Reserva de Marmitas
 
 ## 1. Login de usuário

@@ -289,21 +289,41 @@ Registro das decisões técnicas e de processo tomadas ao longo da construção 
 - **Alternativas:**
     - **A (atual):** múltiplos `.env` (`.env.dev`, `.env.hml`, `.env.prod`) + variável `TEST_ENV` selecionando qual carregar via helper.
     - **B (mais simples, 12-Factor):** apenas `process.env`, com um único `.env` local opcional e secrets do CI injetando direto. Discutido e ficou pendente de implementação.
-- **Decisão atual:** modelo A em ambas as suítes (`test/env/` para a API, `e2e/env/` para a Web). Mesmo conjunto de variáveis (`BASE_URL`, credenciais, `ALLOW_DESTRUCTIVE`). Scripts npm dedicados (`test:dev`, `test:hml`, `test:prod`; `e2e:dev`, `e2e:hml`, `e2e:prod`). Em CI, o pipeline cria o `.env.<TEST_ENV>` no runner ou injeta direto em `process.env`.
+- **Decisão atual:** modelo A em ambas as suítes (`test/env/` para a API, `playwright/env/` para a Web). Mesmo conjunto de variáveis (`BASE_URL`, credenciais, `ALLOW_DESTRUCTIVE`). Scripts npm dedicados (`test:dev`, `test:hml`, `test:prod`; `e2e:dev`, `e2e:hml`, `e2e:prod`). Em CI, o pipeline cria o `.env.<TEST_ENV>` no runner ou injeta direto em `process.env`.
 - **Trade-offs:** mais arquivos para manter, mas a troca de ambiente fica trivial localmente (`npm run test:hml`).
 - **Quando revisitar:** ao configurar o CI/CD pela primeira vez. Avaliar migração para o modelo B (mais simples, alinhado a 12-Factor) caso o time prefira.
 
 ### 5.14 Stack Playwright para a suíte Web
 
-- **Contexto:** Definir o framework de E2E e o padrão arquitetural.
-- **Alternativas:** Cypress (popular, opinionado), Playwright (moderno, multi-browser), TestCafé.
-- **Decisão:** Playwright com padrão **Page Objects + Actions + Fixtures**:
-    - Page Objects encapsulam locators e interações básicas.
-    - Actions descrevem ações de usuário em alto nível compostas a partir das pages (ex.: `criarReservaDeAlmoco`).
-    - Fixtures via `test.extend()` injetam contextos prontos (ex.: `clientPage` já logada, `apiClient` autenticado).
+- **Contexto:** Definir o framework de E2E, linguagem e padrão arquitetural.
+- **Alternativas:** Cypress (popular, opinionado, JS), Playwright (moderno, multi-browser, TS), TestCafé.
+- **Decisão:** **@playwright/test em TypeScript**, seguindo o padrão **Page Actions + Fixtures** do projeto de referência Velo:
+    - `createXxxActions(page)` — funções fábrica que retornam objetos com métodos de interação (sem classe `extends`).
+    - `test.extend<{ app: App }>` — fixture que injeta `{ auth, reservation, profile, admin }` em todos os testes.
+    - Execução serial (`workers: 1`, `fullyParallel: false`) para proteger o banco em memória compartilhado.
     - Nome dos tests: `TCxx — Título (CTzz)` para rastreabilidade direta com o doc de casos.
-- **Trade-offs:** Playwright tem curva inicial maior que Cypress, mas multi-browser nativo, melhor isolamento e auto-wait robusto.
-- **Quando revisitar:** se o time já dominar Cypress e a multi-browser não for crítica.
+- **Trade-offs:** Playwright tem curva inicial maior que Cypress, mas multi-browser nativo, melhor isolamento, auto-wait robusto e TypeScript de primeira classe.
+- **Quando revisitar:** se o time já dominar Cypress e multi-browser não for crítica.
+
+### 5.15 Isolamento de testes via endpoint `POST /test/reset`
+
+- **Contexto:** O banco é em memória e reiniciar o servidor a cada teste é inviável.
+- **Alternativas:** (A) reiniciar o processo a cada spec; (B) seed em `beforeAll` sem reset; (C) endpoint de reset exclusivo para NODE_ENV=test.
+- **Decisão:** Opção C — `POST /test/reset` (montado condicionalmente em `src/app.js` quando `NODE_ENV === test`) zera os arrays do `memoryDB` e re-executa `seedAdminUser()`. Chamado no `beforeEach` de cada spec via `resetApp()` em `playwright/support/helpers.ts`.
+- **Trade-offs:** estado completamente limpo entre testes sem reiniciar o servidor. Risco: endpoint exposto em produção se `NODE_ENV` não for configurado corretamente — mitigado pelo guard condicional.
+- **Quando revisitar:** ao migrar para banco real (trocar pelo padrão de transação por teste ou banco de dados de teste separado).
+
+### 5.16 Estratégia de locators no frontend Vue
+
+- **Contexto:** Os templates Vue usam `<label class="label">Texto</label>` sem atributo `for`, e os inputs não têm `id`. O `getByLabel()` do Playwright exige `for/id` ou label envolvendo o input.
+- **Alternativas:** (A) adicionar `for/id` em todos os labels e inputs; (B) usar `getByPlaceholder()`, `locator('input[type=...]')`, `locator('select')`, `nth()` e `data-testid`; (C) usar CSS selector posicional.
+- **Decisão:** Opção B — sem alterar os templates de produção para labels. Padrão adotado:
+    - Inputs de autenticação/perfil → `locator('input[type="email"]')`, `locator('input[type="password"]')`, `getByPlaceholder(...)`.
+    - Filtros de data → `locator('input[type="date"]').nth(0/1)`.
+    - Filtro de status → `locator('select')`.
+    - Elementos críticos → `data-testid` (toast, botões de ação, inputs de quantidade/motivo, badges de disponibilidade).
+- **Trade-offs:** evita mudar produção; locators posicionais são frágeis se a ordem do DOM mudar. `data-testid` em elementos críticos mitiga o risco principal.
+- **Quando revisitar:** ao refatorar os templates Vue para acessibilidade (adicionar `for/id`) — aí migrar para `getByLabel()`.
 
 ---
 
