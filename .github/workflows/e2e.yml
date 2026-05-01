@@ -1,0 +1,65 @@
+name: E2E Tests
+
+on:
+  # Push direto para main → roda sempre (full CI)
+  push:
+    branches: [main]
+  # Pull request → roda apenas quando arquivos relevantes mudam
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - 'playwright/**'
+      - 'src/**'
+      - 'server.js'
+      - 'package.json'
+      - 'package-lock.json'
+
+jobs:
+  e2e:
+    name: Playwright / Chromium
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependências (raiz)
+        run: npm ci
+
+      - name: Instalar dependências (frontend)
+        run: npm ci
+        working-directory: frontend
+
+      - name: Instalar browser Playwright
+        run: node_modules/.bin/playwright install --with-deps chromium
+
+      - name: Criar arquivo de ambiente E2E
+        run: |
+          mkdir -p playwright/env
+          {
+            echo "BASE_URL=http://localhost:5173"
+            echo "API_BASE_URL=http://localhost:3000"
+            echo "ADMIN_EMAIL=admin@cantina.com"
+            echo "ADMIN_PASSWORD=Admin@123"
+            echo "CLIENT_EMAIL=cliente@cantina.com"
+            echo "CLIENT_PASSWORD=Cliente@123"
+            echo "ALLOW_DESTRUCTIVE=true"
+          } > playwright/env/.env.dev
+
+      - name: Executar testes E2E
+        run: npm run e2e
+        env:
+          CI: true
+
+      - name: Upload relatório Playwright
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright/playwright-report/
+          retention-days: 7

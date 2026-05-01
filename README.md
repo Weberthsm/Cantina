@@ -1,5 +1,8 @@
 # Cantina
 
+[![API Tests](https://github.com/Weberthsm/Cantina/actions/workflows/api.yml/badge.svg)](https://github.com/Weberthsm/Cantina/actions/workflows/api.yml)
+[![E2E Tests](https://github.com/Weberthsm/Cantina/actions/workflows/e2e.yml/badge.svg)](https://github.com/Weberthsm/Cantina/actions/workflows/e2e.yml)
+
 Sistema de **reserva de marmitas/refeições** dividido em dois apps:
 
 - **API REST** (Node.js + Express) — backend com regras de negócio, autenticação JWT e dados em memória.

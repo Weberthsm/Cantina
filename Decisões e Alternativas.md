@@ -329,13 +329,20 @@ Registro das decisões técnicas e de processo tomadas ao longo da construção 
 
 ## 6. CI/CD e estrutura futura
 
-### 6.1 Selective testing por path
+### 6.1 Selective testing por path ✅
 
 - **Contexto:** Monorepo com backend e frontend; rodar tudo em todo PR é caro/lento.
-- **Decisão:** filtros de path no GitHub Actions — workflows separados para `api/**`, `web/**`, e um full no `main`. Forçar rodar tudo se `package.json`, `pnpm-lock.yaml` ou `swagger.yaml` mudarem.
-- **Trade-offs:** rapidez no PR, rede de segurança no `main`. Risco de quebra de contrato entre back e front mitigado por:
-    - Smoke E2E que cobre 1-2 fluxos críticos.
-    - Idealmente: contract tests baseados no `swagger.yaml`.
+- **Decisão implementada:** dois workflows no GitHub Actions (`.github/workflows/`):
+    - `api.yml` — roda `npm test` (Mocha/Supertest); dispara em PR quando `src/**`, `test/**`, `server.js`, `package.json`, `package-lock.json` ou `resources/swagger.yaml` mudam.
+    - `e2e.yml` — roda `npm run e2e` (Playwright/Chromium); dispara em PR quando `frontend/**`, `playwright/**`, `src/**`, `server.js`, `package.json` ou `package-lock.json` mudam.
+    - **Push para `main`:** ambos os workflows disparam sempre (sem filtro de path) — full CI.
+- **Detalhes de implementação:**
+    - Arquivos de ambiente criados no runner a partir das credenciais padrão do seed (não há secrets reais).
+    - E2E: o `webServer` do `playwright.config.ts` sobe e derruba backend + frontend automaticamente; o runner não precisa gerenciar processos manualmente.
+    - Relatório HTML do Playwright publicado como artefato (retenção 7 dias) mesmo em caso de falha.
+    - `CI=true` ativa retries (2×) e `forbidOnly` no Playwright.
+- **Trade-offs:** rapidez no PR, rede de segurança no `main`. Risco de quebra de contrato entre back e front mitigado pelos 41 testes E2E que cobrem os fluxos críticos.
+- **Trigger em push de branch (não implementado):** adicionar `push: branches: ['**']` com o mesmo filtro de path daria feedback imediato sem precisar abrir PR — útil em projetos solo. Não implementado para evitar duplicação de execuções (push + PR rodam duas vezes). Para este projeto de aprendizado, onde o desenvolvimento é solo, seria uma escolha válida.
 - **Quando revisitar:** ao adotar Turborepo/Nx — `affected` substitui filtros de path.
 
 ### 6.2 Estrutura futura: monorepo formal
@@ -397,6 +404,7 @@ Registro das decisões técnicas e de processo tomadas ao longo da construção 
 | 2026-04-30  | Prompts renumerados após inserção do prompt 6 (antigo 7→8 testes API; antigo 8→9 frontend). |
 | 2026-04-30  | Prompt 8 (Mocha/Chai/Supertest) reescrito: TC IDs nos nomes, asserção por categoria, multi-ambiente via `TEST_ENV`, tag `@destructive`. |
 | 2026-04-30  | Prompt 10 (Playwright) ajustado: escopo Camada `Ambas`+`Web`, multi-ambiente espelhando o prompt 8, TC IDs nos nomes, padrão Page Objects + Actions + Fixtures. |
+| 2026-05-01  | CI/CD implementado: `api.yml` e `e2e.yml` com selective testing por path; badges no README; pasta `e2e/` renomeada para `playwright/`. |
 
 ---
 
