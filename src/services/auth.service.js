@@ -168,7 +168,7 @@ const AuthService = {
     const token = uuid();
     db.passwordRecoveryTokens[token] = {
       userId: user.id,
-      expiresAt: Date.now() + 1000 * 60 * 30, // 30 minutos
+      expiresAt: Date.now() + config.business.recoveryTokenTtlMs,
     };
     // Retorna o token em desenvolvimento para facilitar testes.
     return { sent: true, recoveryToken: token };

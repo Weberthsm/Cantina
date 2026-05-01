@@ -35,8 +35,8 @@ const icons = {
           aria-hidden="true"
         >{{ icons[item.type] || icons.info }}</span>
         <div class="flex-1">
-          <p v-if="item.title" class="font-semibold leading-tight">{{ item.title }}</p>
-          <p class="text-sm leading-snug opacity-90">{{ item.message }}</p>
+          <p v-if="item.title" class="font-semibold leading-tight" data-testid="toast-title">{{ item.title }}</p>
+          <p class="text-sm leading-snug opacity-90" data-testid="toast-message">{{ item.message }}</p>
         </div>
         <button
           class="text-current/70 hover:text-current"

@@ -1,0 +1,184 @@
+Objetivo
+- Implementar a automação de testes de API REST do sistema Cantina utilizando Mocha, Chai, Supertest e Mochawesome.
+- Cobrir todos os Casos de Teste descritos em "7 - Casos de Teste.txt" cuja Camada seja "Ambas" ou "API". Casos com Camada "Web" estão fora do escopo deste prompt e serão automatizados na suíte E2E do frontend.
+
+Contexto
+- O backend está em Node.js + Express, com persistência em memória, autenticação JWT em middleware e dados zerados a cada inicialização. Ponto de entrada: server.js.
+- A especificação OpenAPI está em "resources/swagger.yaml" e descreve todos os endpoints, schemas e códigos de erro.
+- Os Casos de Teste (formato Gherkin com cabeçalho de metadados) estão em "Prompts/Planejamento e criação do software/7 - Casos de Teste.txt", numerados por User Story (TC01, TC02, …) e marcados com Tipo (Positivo | Negativo | Borda | Permissão), Camada (Ambas | API | Web) e CTs cobertas.
+- As Condições de Teste (origem dos TCs) estão em "Prompts/Planejamento e criação do software/4 - Condições de Teste.txt".
+- As User Stories e seus Critérios de Aceitação Gherkin estão no "README.md" como referência adicional do comportamento esperado.
+- A API local roda em "http://localhost:3000". Em CI a porta pode variar.
+- Existem dois usuários pré-cadastrados no seed (admin e cliente) com senhas conhecidas. Para cenários que exijam outros perfis/estados, criar usuários via /auth/register + /auth/confirm-email dentro do próprio teste.
+
+Regras
+- Stack obrigatória: mocha, chai, supertest, mochawesome. Permitido acrescentar sinon (fake timers para horário de corte) e dotenv (variáveis de ambiente).
+- Estrutura de pastas (na raiz do backend):
+    test/
+    ├── api/
+    │   ├── us01-login/
+    │   │   └── login.spec.js
+    │   ├── us02-cadastro-reservas/
+    │   │   └── reservas.spec.js
+    │   ├── us03-cancelamento-cliente/
+    │   ├── us04-consulta-reservas/
+    │   ├── us05-marcar-entregue/
+    │   ├── us06-cancelamento-admin/
+    │   ├── us07-cadastro-cliente/
+    │   ├── us08-confirmacao-email/
+    │   ├── us09-recuperacao-senha/
+    │   ├── us10-perfil/
+    │   ├── us11-detalhe-reserva/
+    │   ├── us12-listagem-global-admin/
+    │   ├── us13-historico-cancelamentos/
+    │   ├── us14-documentacao/
+    │   └── us15-disponibilidade/
+    ├── env/
+    │   ├── .env.example     # modelo versionado (sem credenciais)
+    │   ├── .env.dev         # local (gitignored)
+    │   ├── .env.hml         # homologação (gitignored)
+    │   └── .env.prod        # produção (gitignored, ALLOW_DESTRUCTIVE=false)
+    ├── fixtures/
+    │   ├── users.json
+    │   ├── reservations.json
+    │   └── invalid-payloads.json
+    ├── helpers/
+    │   ├── env.js           # carrega test/env/.env.<TEST_ENV> e expõe config tipada
+    │   ├── http.js          # agente supertest a partir de BASE_URL do env atual
+    │   ├── auth.js          # login + tokens (admin/cliente) e criação programática de usuários confirmados
+    │   ├── seed.js          # criação programática de reservas e estados pré-condição
+    │   └── time.js          # utilitários para sinon.useFakeTimers (cortes/expiração de tokens)
+    └── .mocharc.cjs         # configuração do mocha (timeout, recursive, reporter, require de env.js)
+- Um arquivo .spec.js por User Story; dentro dele:
+    - Um describe externo "USxx — Título da User Story".
+    - Describes aninhados por agrupamento ("Validações", "Regras de negócio", "Permissões", "Estado").
+    - Cada it referencia o caso de teste correspondente do arquivo "7 - Casos de Teste.txt" pelo TC ID, seguido do título do caso, e cita as CTs cobertas no final entre parênteses.
+      Padrão: `it('TCxx — <título do caso> (CTzz, CTww)', async () => { ... })`.
+- Cobertura obrigatória:
+    1. Todo TC com Camada "Ambas" ou "API" do arquivo "7 - Casos de Teste.txt" precisa ter um it correspondente. TCs de Camada "Web" devem ser pulados (sem `it.skip`; simplesmente não os incluir nesta suíte).
+    2. Para TCs descritos como "Esquema do Cenário" (Scenario Outline), implementar como Data Driven Testing (DDT): consumir a tabela "Exemplos:" via fixture JSON e gerar um it por linha com `forEach` ou `Mocha-each`. O nome do it deve identificar o caso parametrizado (ex.: `TC05 — quantidade inválida [quantidade=0]`).
+    3. Casos do tipo "Permissão" devem incluir teste de "sem token" (401) e, quando aplicável, "perfil insuficiente" (403).
+- Asserções:
+    - Status code esperado: `expect(res.status).to.equal(<codigo>)`. Para TCs negativos cuja categoria abrange múltiplas faixas, usar `to.be.oneOf([400, 422])` quando ambos forem aceitáveis.
+    - Estrutura do payload (sucesso e erro): `expect(res.body).to.have.property(...)` ou `expect(res.body).to.deep.include(...)`.
+    - Mensagens de erro: por padrão asserir pela **categoria** (campo `error` da resposta da API: `ValidationError`, `BusinessRuleViolation`, `Conflict`, `Unauthorized`, `Forbidden`, `NotFound`, `Locked`). Asserir o conteúdo literal do campo `message` apenas para os TCs onde a mensagem carrega informação essencial ao usuário (números, limites, próxima ação) — esses TCs estão claramente marcados em "7 - Casos de Teste.txt" com mensagem entre aspas no "Então".
+    - Side effects: sempre que o caso indicar uma mudança de estado observável (ex.: "a disponibilidade do jantar passa a apresentar used igual a 2"), validar com uma chamada subsequente à API (ex.: GET /reservations/availability) e asserir o valor.
+- Hooks:
+    - `before` global por arquivo .spec.js: garantir estado limpo da API (preferir criar dados próprios isolados em vez de assumir estado anterior).
+    - `beforeEach` por bloco describe: obter token via helper de auth, criar reservas pré-condição quando necessário.
+    - `afterEach`: cancelar reservas criadas pelo teste, restaurar fake timers do sinon.
+- Determinismo:
+    - Para regras dependentes de hora (horário de corte, expiração de token), usar `sinon.useFakeTimers` para travar a hora atual. Proibido `setTimeout`/`sleep` em testes ou aguardar a virada de hora real.
+    - Para datas em payloads, usar datas calculadas dinamicamente (`hoje + 1 dia`, `hoje + 30 dias`) para evitar testes que vencem.
+- Isolamento entre testes:
+    - Nenhum teste deve depender da ordem dos demais.
+    - Nenhum teste deve deixar estado residual (criar usuários com e-mail aleatório, cancelar reservas criadas no `afterEach`).
+    - Quando o teste exigir um estado limpo do banco (ex.: limite diário, histórico vazio), criar um usuário novo no `beforeEach` em vez de tentar zerar o usuário do seed.
+- Configuração multi-ambiente (dev, homologação, produção):
+    - A suíte deve rodar contra qualquer ambiente sem alterar o código dos specs. Apenas o arquivo de variáveis muda.
+    - Manter um arquivo .env por ambiente em `test/env/`:
+        - `test/env/.env.dev`
+        - `test/env/.env.hml`
+        - `test/env/.env.prod`
+    - Um arquivo `test/env/.env.example` versionado serve de modelo (sem credenciais reais).
+    - Os arquivos de credenciais reais (.env.dev, .env.hml, .env.prod) devem ser ignorados pelo git (adicionar a `.gitignore`).
+    - Variável de seleção: `TEST_ENV=dev|hml|prod` (default `dev`). O helper de configuração lê `TEST_ENV` e carrega o arquivo correspondente via `dotenv` antes de qualquer teste.
+    - Variáveis padrão por ambiente (cada arquivo .env contém seu próprio valor):
+        - `BASE_URL` (ex.: `http://localhost:3000` em dev, URL pública em hml/prod)
+        - `ADMIN_EMAIL`, `ADMIN_PASSWORD`
+        - `CLIENT_EMAIL`, `CLIENT_PASSWORD`
+        - `ENV_NAME` (igual a "dev", "hml" ou "prod" — útil para logs/relatório)
+        - `ALLOW_DESTRUCTIVE` (default `true` em dev/hml; `false` em prod)
+    - URLs e credenciais nunca chumbadas dentro dos specs — sempre via `process.env`.
+    - O helper `http.js` cria o agente supertest a partir de `BASE_URL`.
+    - O helper `auth.js` usa as credenciais do ambiente atual; se as credenciais do ambiente forem inválidas, o teste deve falhar com mensagem explícita ("verifique TEST_ENV e o respectivo .env").
+- Segurança em produção (e ambientes compartilhados):
+    - Testes destrutivos (que alteram dados além de cancelar reservas próprias criadas no teste) devem ser agrupados em describes/its tagueados como `@destructive` no nome (ex.: `it('TC05 — Bloqueio após 5 tentativas inválidas (@destructive) (CT04)', ...)`.
+    - Quando `ALLOW_DESTRUCTIVE=false` (caso típico de prod), o helper deve filtrar via Mocha `--grep` excluindo `@destructive`.
+    - Em prod, criar dados sempre com identificadores únicos e curtos prefixos (`e2e-<timestamp>-...`) para facilitar identificar e remover, mesmo que algum cleanup falhe.
+- Comandos npm (em package.json):
+    - `"test": "TEST_ENV=dev mocha --config test/.mocharc.cjs 'test/**/*.spec.js'"`
+    - `"test:dev": "TEST_ENV=dev mocha --config test/.mocharc.cjs 'test/**/*.spec.js'"`
+    - `"test:hml": "TEST_ENV=hml mocha --config test/.mocharc.cjs 'test/**/*.spec.js'"`
+    - `"test:prod": "TEST_ENV=prod mocha --config test/.mocharc.cjs --grep '@destructive' --invert 'test/**/*.spec.js'"`
+    - `"test:report": "TEST_ENV=${TEST_ENV:-dev} mocha --config test/.mocharc.cjs --reporter mochawesome --reporter-options reportDir=test/reports,reportFilename=index 'test/**/*.spec.js'"`
+    - `"test:us": "mocha --config test/.mocharc.cjs --grep '<padrão>' 'test/**/*.spec.js'"` (uso: `TEST_ENV=hml npm run test:us -- 'US02'`)
+    - Para Windows/PowerShell, fornecer alternativas com `cross-env` (incluir `cross-env` em devDependencies): `"test:hml": "cross-env TEST_ENV=hml mocha …"`.
+- Boas práticas obrigatórias:
+    - Nomes de specs no padrão `TCxx — descrição comportamental (CTzz)` para facilitar leitura no relatório e rastreabilidade.
+    - Asserções fortes (proibido `expect(res.status).to.be.ok` ou `expect(res.body).to.exist` sem mais).
+    - Comentários referenciando o cenário Gherkin do caso de teste quando o teste for não óbvio (mantém a documentação viva).
+- Saída do prompt:
+    - Estrutura de pastas `test/` criada conforme acima, incluindo `test/env/.env.example` e `test/env/` no `.gitignore` (exceto `.env.example`).
+    - Arquivos .spec.js para as 15 User Stories cobrindo todos os TCs de Camada "Ambas" ou "API" do arquivo "7 - Casos de Teste.txt".
+    - Helpers, fixtures e `.mocharc.cjs` prontos. O `.mocharc.cjs` usa `--require test/helpers/env.js` para garantir que o ambiente é carregado antes de qualquer spec.
+    - `package.json` atualizado com devDependencies (mocha, chai, supertest, mochawesome, sinon, dotenv, cross-env) e scripts `test`, `test:dev`, `test:hml`, `test:prod`, `test:report` e `test:us`.
+    - `test/README.md` curto explicando:
+        - Como configurar `.env.dev`/`.env.hml`/`.env.prod` a partir do `.env.example`.
+        - Como rodar contra cada ambiente (`npm run test:hml`, etc.).
+        - Como interpretar os nomes dos testes (`TCxx — título (CTzz)`).
+        - O que significa a tag `@destructive` e por que prod exclui esses testes.
+        - Onde encontrar o relatório (`test/reports/index.html`).
+
+Exemplo
+Estrutura mínima de um spec (referência, não copiar literal):
+
+    // test/api/us01-login/login.spec.js
+    const { expect } = require('chai');
+    const sinon = require('sinon');
+    const http = require('../../helpers/http');
+    const { loginAsClient, registerAndConfirm } = require('../../helpers/auth');
+    const invalidPayloads = require('../../fixtures/invalid-payloads.json');
+
+    describe('US01 — Login de usuário', () => {
+      describe('Regras de negócio', () => {
+        it('TC01 — Cliente autentica com sucesso (CT02)', async () => {
+          const res = await loginAsClient();
+          expect(res.status).to.equal(200);
+          expect(res.body).to.have.property('token').that.is.a('string');
+          expect(res.body).to.have.nested.property('user.email', process.env.CLIENT_EMAIL);
+        });
+
+        it('TC05 — Bloqueio após 5 tentativas inválidas consecutivas (CT04)', async () => {
+          const { email } = await registerAndConfirm();
+          for (let i = 0; i < 5; i++) {
+            await http.post('/auth/login').send({ email, password: 'errada' });
+          }
+          const res = await http.post('/auth/login').send({ email, password: 'errada' });
+          expect(res.status).to.equal(423);
+          expect(res.body).to.have.property('error', 'Locked'); // categoria do erro
+        });
+      });
+
+      describe('Validações', () => {
+        invalidPayloads.us01_login.forEach(({ description, payload }) => {
+          it(`TC02 — Login sem campos obrigatórios [${description}] (CT01)`, async () => {
+            const res = await http.post('/auth/login').send(payload);
+            expect(res.status).to.be.oneOf([400, 401]);
+            expect(res.body).to.have.property('error'); // categoria do erro
+          });
+        });
+      });
+
+      describe('Permissões', () => {
+        // Este caso não existe explicitamente no arquivo de Casos da US01,
+        // mas ilustra o padrão de testes de permissão.
+      });
+    });
+
+Mapeamento de categorias de erro (referência rápida)
+- ValidationError → 400 (validação de dados, formatos, campos faltantes).
+- BusinessRuleViolation → 400 (regra de negócio, ex.: data passada, corte ultrapassado).
+- Unauthorized → 401 (sem token / credenciais inválidas).
+- Forbidden → 403 (sem permissão para esse recurso/perfil).
+- NotFound → 404 (recurso inexistente).
+- Conflict → 409 (estado conflitante: duplicidade, estoque insuficiente, status inválido).
+- Locked → 423 (conta bloqueada).
+- (Esses são os valores literais do campo `error` no payload de erro da API. Use-os ao asserir por categoria.)
+
+Formato
+- Suíte completa de testes Mocha/Chai/Supertest com Mochawesome configurado.
+- Pasta `test/` na raiz do backend, organizada por User Story conforme o item Estrutura.
+- Mapeamento explícito TC ↔ it: cada it cita o TC ID e as CTs cobertas no nome.
+- Comandos npm prontos para rodar localmente e gerar relatório HTML em `test/reports/index.html`.
+- TCs de Camada "Web" não automatizados aqui (ficam para a suíte E2E do frontend).

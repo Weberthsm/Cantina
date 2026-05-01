@@ -13,6 +13,7 @@ const yaml = require('yamljs');
 
 const routes = require('./routes');
 const errorHandler = require('./middlewares/error.middleware');
+const testRoutes = require('./routes/test.routes');
 
 const app = express();
 
@@ -30,6 +31,11 @@ app.get('/api-docs.json', (req, res) => res.json(swaggerDocument));
 
 // Rotas da aplicação.
 app.use('/', routes);
+
+// Rota exclusiva para testes E2E: reseta o banco e reexecuta o seed.
+if (process.env.NODE_ENV === 'test') {
+  app.use('/test', testRoutes);
+}
 
 // Rota não encontrada.
 app.use((req, res) => {

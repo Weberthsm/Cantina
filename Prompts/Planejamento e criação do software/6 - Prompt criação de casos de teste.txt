@@ -1,0 +1,134 @@
+Objetivo
+- Construir os casos de teste detalhados do sistema Cantina em formato Gherkin, derivando-os tanto das Condições de Teste já elaboradas quanto dos Critérios de Aceitação Gherkin presentes nas User Stories.
+- Servir como artefato de revisão pelo time antes da automação. Cada caso de teste é a "instância" concreta de uma condição (genérica) e de um cenário Gherkin (declarativo) do README.
+
+Contexto
+- As User Stories e seus Critérios de Aceitação Gherkin estão em "README.md".
+- As Condições de Teste estão em "Prompts/Planejamento e criação do software/4 - Condições de Teste.txt", numeradas por User Story (CT01, CT02, …) e classificadas por camada (API ou Web).
+- A especificação OpenAPI está em "resources/swagger.yaml" (formato exato dos requests/responses, status codes e mensagens de erro).
+- A API local roda em "http://localhost:3000". Existem dois usuários no seed (admin e cliente) com senhas conhecidas.
+
+Conceito (importante para acertar o nível de detalhe)
+- Condição de teste é genérica/abstrata: descreve "o que" precisa ser exercitado.
+    Exemplo: "Validar disponibilidade de estoque por refeição comparando quantidades."
+- Cenário Gherkin do README é declarativo, focado no comportamento de negócio observável pelo usuário, sem amarrar implementação. Geralmente cobre o caminho típico de cada regra.
+    Exemplo: "Quando reservo 4 jantares para uma data com estoque 3, então a reserva é rejeitada."
+- Caso de teste é específico/executável: descreve "como" exercitar aquela condição em um cenário concreto, com dados reais e mensagens literais. Mantém o estilo declarativo do Gherkin do README, mas com dados de entrada e mensagens de saída suficientes para ser reproduzido por um humano ou automatizado por um agente. Um caso de teste é a interseção entre uma condição (CT) e um (ou mais) cenários Gherkin do README, agora com dados concretos.
+
+Regras
+- Estilo: cada caso de teste é escrito em Gherkin, exclusivamente no estilo declarativo. Nunca usar passos imperativos ligados à UI ("clico em X", "preencho campo Y") ou técnicos ligados à API ("faço POST em /endpoint", "recebo HTTP 422"). O caso descreve comportamento de negócio com dados concretos.
+- Camada do caso: por padrão, cada caso descreve o comportamento de negócio independente de implementação (Camada = "Ambas"). Quando o comportamento diverge entre API e Web — por exemplo, o front exibe um badge visual ou desabilita um controle, o back retorna um número ou rejeita o request — gerar dois casos distintos, um com Camada = "API" e outro com Camada = "Web", escritos especificamente para cada um. Não duplicar quando o comportamento é o mesmo nas duas camadas. Isso reduz duplicação sem criar ambiguidade nos passos.
+- Estrutura de cada caso (em ordem):
+    1. Linha de cabeçalho em negrito com metadados: ID, Tipo, Camada, CT(s) cobertas.
+       Formato: "**TCxx — Título curto** · <Tipo> · <Camada> · <CTs>"
+       - Tipo: Positivo | Negativo | Borda | Permissão.
+       - Camada: Ambas | API | Web. Padrão "Ambas"; usar API ou Web só quando o comportamento for específico daquela camada.
+       - CTs: lista das condições cobertas (ex.: "CT03, CT11").
+    2. Bloco de código ```gherkin contendo um único Cenário (ou Esquema do Cenário, quando parametrizado).
+- Regras dentro do Cenário:
+    - Um único "Quando" por cenário.
+    - "Dado" descreve pré-condições com dados concretos (datas reais como "2026-05-20", valores reais de estoque, papel do usuário, hora atual quando relevante).
+    - "Então" descreve o resultado observável. Para erros, asserir por padrão a categoria/tipo do erro em linguagem de negócio (ex.: "a reserva é rejeitada por violação de regra de negócio", "a operação é rejeitada por falta de autenticação", "o cadastro é rejeitado por validação de dados"). Citar a mensagem literal entre aspas apenas quando ela carregar informação essencial para o usuário (números, limites, instrução de próxima ação) ou quando a CT exigir verificação textual exata. Isso reduz acoplamento com mudanças de copy/UX e mantém o teste útil quando só o texto muda.
+    - Não citar status HTTP, payload bruto ou rota — manter linguagem de negócio. A automação cuida da tradução.
+- Numeração TC01, TC02, … reiniciada por User Story.
+- Parametrização: quando o mesmo comportamento se repete com dados diferentes, usar "Esquema do Cenário" com tabela "Exemplos:" no padrão Cucumber. Exemplos típicos: validação de campos obrigatórios, valores limítrofes, enumerações inválidas. Não usar Esquema quando há somente 2 casos ou quando o comportamento muda entre as variações.
+- Cobertura mínima:
+    1. Toda Condição de Teste (independentemente da camada) deve ter no mínimo 1 caso positivo (happy path) e 1 caso negativo, quando a condição admitir os dois.
+    2. Todo cenário Gherkin do README precisa estar coberto por pelo menos um caso de teste.
+    3. Cada User Story deve ter pelo menos um caso de "Permissão" (ex.: tentativa sem autenticação, tentativa com perfil inadequado) quando a funcionalidade exigir autenticação ou papel específico.
+- Rastreabilidade:
+    - A coluna/atributo de CT é informada apenas no cabeçalho do caso, não dentro do Gherkin.
+    - A relação "Cenário Gherkin do README ↔ Caso de Teste" não fica nas linhas dos casos. Vai exclusivamente em uma seção "## Rastreabilidade" no final do documento.
+- Quando uma mensagem literal for usada (exceções da regra acima), ler do código real (back ou front) e citar exatamente como sai para o usuário. Quando possível, incluir referência discreta à fonte do texto (ex.: serviço/arquivo que retorna a mensagem) para facilitar manutenção.
+- O documento de casos é texto puro destinado à revisão. Não inclua fragmentos de código, payloads JSON em "Dados de teste" ou referências a status HTTP. A automação vem em uma etapa posterior (prompt 7).
+
+Exemplo
+A seguir, exemplos ilustrativos de como cada caso deve ser escrito (não copiar literal — usar como modelo de estilo).
+
+    ## US02 — Cadastro de reservas
+
+    **TC01 — Cliente cria uma reserva de almoço com sucesso** · Positivo · Ambas · CT01, CT03, CT10, CT11
+
+    ```gherkin
+    Cenário: Cliente cria uma reserva de almoço com sucesso
+      Dado que sou um cliente autenticado com perfil completo
+      E o estoque de almoço para "2026-05-20" tem vagas
+      E ainda não passou do horário de corte do almoço
+      Quando reservo um almoço para "2026-05-20" sem informar quantidade
+      Então a reserva é confirmada
+      E a reserva criada tem status "ativa" e quantidade 1
+      E a reserva fica vinculada ao meu usuário
+    ```
+
+    **TC02 — Cliente reserva múltiplos jantares em uma única reserva** · Positivo · Ambas · CT03, CT11
+
+    ```gherkin
+    Cenário: Cliente reserva múltiplos jantares em uma única reserva
+      Dado que sou um cliente autenticado com perfil completo
+      E o estoque de jantar para "2026-05-20" tem ao menos 2 vagas
+      E não tenho reserva ativa de jantar nesse dia
+      Quando reservo 2 jantares para "2026-05-20"
+      Então a reserva é confirmada com quantidade 2
+      E a disponibilidade do jantar do dia passa a apresentar "used" igual a 2
+    ```
+
+    **TC03 — Estoque insuficiente para a quantidade pedida** · Negativo · Ambas · CT09
+
+    ```gherkin
+    Cenário: Quantidade pedida ultrapassa o estoque restante
+      Dado que sou um cliente autenticado com perfil completo
+      E o estoque de jantar para "2026-05-20" é 3 e ainda não houve reservas
+      Quando tento reservar 4 jantares para "2026-05-20"
+      Então a reserva é rejeitada por estoque insuficiente
+      E a mensagem informa quantos jantares ainda estão disponíveis nesse dia
+    ```
+
+    **TC08 — Quantidade inválida (zero, negativa, decimal, não numérica)** · Negativo · Ambas · CT04
+
+    ```gherkin
+    Esquema do Cenário: Quantidade inválida na reserva
+      Dado que sou um cliente autenticado com perfil completo
+      Quando tento reservar uma refeição para "2026-05-20" informando quantidade <quantidade>
+      Então a reserva é rejeitada por validação de dados
+
+      Exemplos:
+        | quantidade |
+        | 0          |
+        | -1         |
+        | 2.5        |
+        | "abc"      |
+    ```
+
+    **TC09 — Refeição esgotada é sinalizada visualmente no formulário** · Positivo · Web · CT14, CT15
+
+    ```gherkin
+    Cenário: Cliente vê a refeição esgotada na tela de Nova Reserva
+      Dado que sou um cliente autenticado com perfil completo
+      E o estoque de almoço para "2026-05-20" está totalmente consumido
+      Quando abro o formulário de Nova Reserva e seleciono a data "2026-05-20"
+      Então o cartão de almoço é marcado como esgotado
+      E a opção de almoço fica indisponível para seleção
+    ```
+
+    **TC10 — Tentativa de reserva sem autenticação** · Permissão · API · CT01
+
+    ```gherkin
+    Cenário: Tentativa de reservar sem autenticação
+      Dado que não envio o cabeçalho de autenticação
+      Quando tento criar uma reserva
+      Então a operação é rejeitada por falta de autenticação
+    ```
+
+Formato
+- Salvar o artefato como "N - Casos de Teste.txt" na mesma pasta deste prompt, onde N é a posição imediatamente após este prompt na ordem do fluxo (sugerido "7 - Casos de Teste.txt"). Antes de salvar, renumerar +1 todos os arquivos da pasta cuja numeração seja maior ou igual a N (ex.: "7 - prompt de criação de testes api_especifico.txt" → "8 - …", "8 - Criando frontend.txt" → "9 - …"), preservando o conteúdo de cada arquivo.
+- Estrutura do arquivo:
+    - Para cada User Story, uma seção "## USxx — Título da User Story".
+    - Dentro de cada seção, sequência de casos no formato descrito em "Regras" (cabeçalho + bloco gherkin).
+    - Numeração TCxx reiniciada por US.
+- Ao final do arquivo, uma seção "## Rastreabilidade":
+    - Tabela "CT → TC": para cada Condição de Teste de cada US (independentemente da camada — API ou Web), listar os TC(s) que a cobrem.
+    - Tabela "Cenário Gherkin do README → TC": para cada cenário Gherkin do README, listar os TC(s) que o instanciam.
+- Ao final, um "## Resumo de cobertura":
+    - Total de TCs por User Story.
+    - Total geral.
+    - Contagem de TCs por tipo (Positivo / Negativo / Borda / Permissão).

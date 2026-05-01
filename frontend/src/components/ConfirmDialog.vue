@@ -51,14 +51,15 @@ function onReason(e) {
             class="input min-h-[88px]"
             :placeholder="reasonPlaceholder"
             :value="reason"
+            data-testid="cancel-reason-input"
             @input="onReason"
           />
         </div>
         <div class="mt-6 flex justify-end gap-2">
-          <button class="btn-secondary" :disabled="busy" @click="close">
+          <button class="btn-secondary" data-testid="confirm-dialog-cancel" :disabled="busy" @click="close">
             {{ cancelText }}
           </button>
-          <button :class="confirmClass" :disabled="busy" @click="confirm">
+          <button :class="confirmClass" data-testid="confirm-dialog-confirm" :disabled="busy" @click="confirm">
             <span v-if="busy" class="animate-pulse">Aguarde…</span>
             <span v-else>{{ confirmText }}</span>
           </button>

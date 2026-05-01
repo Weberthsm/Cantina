@@ -68,16 +68,22 @@ function fmtDateTime(iso) {
       <button
         v-if="!isAdminView"
         class="btn-secondary text-sm"
+        :data-testid="`btn-cancel-reservation-${reservation.id}`"
         @click="$emit('cancel', reservation)"
       >
         Cancelar reserva
       </button>
       <template v-if="isAdminView">
-        <button class="btn-primary text-sm" @click="$emit('deliver', reservation)">
+        <button
+          class="btn-primary text-sm"
+          :data-testid="`btn-deliver-${reservation.id}`"
+          @click="$emit('deliver', reservation)"
+        >
           Marcar entregue
         </button>
         <button
           class="btn-danger text-sm"
+          :data-testid="`btn-admin-cancel-${reservation.id}`"
           @click="$emit('admin-cancel', reservation)"
         >
           Cancelar (admin)

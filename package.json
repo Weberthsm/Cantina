@@ -6,7 +6,19 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "echo \"No tests configured\" && exit 0"
+    "test": "cross-env TEST_ENV=dev mocha --config test/.mocharc.cjs 'test/api/**/*.spec.js'",
+    "test:dev": "cross-env TEST_ENV=dev mocha --config test/.mocharc.cjs 'test/api/**/*.spec.js'",
+    "test:hml": "cross-env TEST_ENV=hml mocha --config test/.mocharc.cjs 'test/api/**/*.spec.js'",
+    "test:prod": "cross-env TEST_ENV=prod mocha --config test/.mocharc.cjs --grep '@destructive' --invert 'test/api/**/*.spec.js'",
+    "test:report": "cross-env TEST_ENV=dev mocha --config test/.mocharc.cjs --reporter mochawesome --reporter-options reportDir=test/reports,reportFilename=index 'test/api/**/*.spec.js'",
+    "test:us": "cross-env TEST_ENV=dev mocha --config test/.mocharc.cjs 'test/api/**/*.spec.js' --grep",
+    "e2e": "cross-env TEST_ENV=dev playwright test --config playwright/playwright.config.ts",
+    "e2e:dev": "cross-env TEST_ENV=dev playwright test --config playwright/playwright.config.ts",
+    "e2e:hml": "cross-env TEST_ENV=hml playwright test --config playwright/playwright.config.ts",
+    "e2e:prod": "cross-env TEST_ENV=prod playwright test --config playwright/playwright.config.ts --grep-invert @destructive",
+    "e2e:headed": "cross-env TEST_ENV=dev playwright test --config playwright/playwright.config.ts --headed",
+    "e2e:report": "playwright show-report playwright/playwright-report",
+    "e2e:us": "cross-env TEST_ENV=dev playwright test --config playwright/playwright.config.ts --grep"
   },
   "keywords": [
     "api",
@@ -27,5 +39,16 @@
     "swagger-ui-express": "^5.0.0",
     "uuid": "^9.0.1",
     "yamljs": "^0.3.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@types/node": "^25.6.0",
+    "chai": "^4.5.0",
+    "cross-env": "^7.0.3",
+    "mocha": "^10.7.3",
+    "mochawesome": "^7.1.3",
+    "sinon": "^19.0.2",
+    "supertest": "^7.0.0",
+    "typescript": "^6.0.3"
   }
 }

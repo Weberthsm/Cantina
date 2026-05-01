@@ -1,0 +1,51 @@
+{
+  "us01_login_missing_fields": [
+    { "description": "ambos vazios", "payload": {} },
+    { "description": "sem email", "payload": { "password": "senha123" } },
+    { "description": "sem senha", "payload": { "email": "x@y.com" } }
+  ],
+
+  "us02_quantidade_invalida": [
+    { "description": "zero", "quantity": 0 },
+    { "description": "negativa", "quantity": -1 },
+    { "description": "decimal", "quantity": 2.5 },
+    { "description": "string nao numerica", "quantity": "abc" }
+  ],
+
+  "us02_reserva_obrigatorios": [
+    { "description": "sem data", "payload": { "mealType": "almoco" } },
+    { "description": "sem refeicao", "payload": { "date": "FUTURE" } },
+    { "description": "tudo vazio", "payload": {} }
+  ],
+
+  "us04_filtros_invalidos": [
+    { "description": "from inválido", "query": { "from": "31-12-2026" } },
+    { "description": "to inválido", "query": { "to": "xpto" } }
+  ],
+
+  "us06_motivo_em_branco": [
+    { "description": "vazio", "reason": "" },
+    { "description": "só espaços", "reason": "   " },
+    { "description": "ausente", "reason": null }
+  ],
+
+  "us07_emails_invalidos": [
+    { "description": "sem arroba", "email": "joao.example.com" },
+    { "description": "sem dominio", "email": "joao@" },
+    { "description": "sem local", "email": "@example.com" }
+  ],
+
+  "us07_obrigatorios": [
+    { "description": "sem nome", "payload": { "email": "x@y.com", "password": "senha123" } },
+    { "description": "sem email", "payload": { "name": "Foo", "password": "senha123" } },
+    { "description": "sem senha", "payload": { "name": "Foo", "email": "x@y.com" } }
+  ],
+
+  "us10_cpf_invalido": [
+    { "description": "muito curto", "cpf": "123" },
+    { "description": "10 digitos", "cpf": "1234567890" },
+    { "description": "letras", "cpf": "abcdefghijk" }
+  ],
+
+  "us15_data_invalida": ["xpto", "31-12-2026", "abc-def-ghi"]
+}
