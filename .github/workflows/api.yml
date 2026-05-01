@@ -1,0 +1,59 @@
+name: API Tests
+
+on:
+  # Push direto para main → roda sempre (full CI)
+  push:
+    branches: [main]
+  # Pull request → roda apenas quando arquivos relevantes mudam
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'test/**'
+      - 'server.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'resources/swagger.yaml'
+
+jobs:
+  api:
+    name: Mocha / Supertest
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Criar arquivo de ambiente de teste
+        run: |
+          mkdir -p test/env
+          {
+            echo "BASE_URL=http://localhost:3000"
+            echo "ADMIN_EMAIL=admin@cantina.com"
+            echo "ADMIN_PASSWORD=Admin@123"
+            echo "CLIENT_EMAIL=cliente@cantina.com"
+            echo "CLIENT_PASSWORD=Cliente@123"
+          } > test/env/.env.dev
+
+      - name: Iniciar API em modo test
+        run: node server.js &
+        env:
+          NODE_ENV: test
+          PORT: 3000
+
+      - name: Aguardar API ficar disponível
+        run: |
+          for i in $(seq 1 15); do
+            curl -sf http://localhost:3000/ && break
+            echo "Tentativa $i — aguardando API..."
+            sleep 1
+          done
+
+      - name: Executar testes de API
+        run: npm test
