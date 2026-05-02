@@ -376,7 +376,7 @@ A suíte E2E cobre todos os TCs com Camada **Web** ou **Ambas** do documento de 
 ### Stack
 
 - **@playwright/test** (TypeScript) — framework de E2E
-- Padrão **Page Actions + Fixtures** (`test.extend`) — mesmo padrão do projeto de referência Velo
+- Padrão **Page Actions + Fixtures** (`test.extend`) 
 - Multi-ambiente via `playwright/env/.env.dev|hml|prod`
 - Reporter HTML nativo do Playwright
 
