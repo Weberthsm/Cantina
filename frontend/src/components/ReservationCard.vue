@@ -38,6 +38,14 @@ function fmtDateTime(iso) {
     </header>
     <dl class="text-sm text-slate-600 grid grid-cols-1 gap-1">
       <div class="flex justify-between gap-2">
+        <dt class="text-slate-400">Quantidade</dt>
+        <dd>{{ reservation.quantity || 1 }} marmita{{ (reservation.quantity || 1) > 1 ? 's' : '' }}</dd>
+      </div>
+      <div v-if="reservation.deliveryAddress" class="flex justify-between gap-2">
+        <dt class="text-slate-400">Endereço de entrega</dt>
+        <dd class="text-right max-w-[200px]">{{ reservation.deliveryAddress }}</dd>
+      </div>
+      <div class="flex justify-between gap-2">
         <dt class="text-slate-400">Criada em</dt>
         <dd>{{ fmtDateTime(reservation.createdAt) }}</dd>
       </div>
@@ -53,12 +61,24 @@ function fmtDateTime(iso) {
         <dt class="text-slate-400">Entregue em</dt>
         <dd>{{ fmtDateTime(reservation.deliveredAt) }}</dd>
       </div>
-      <div v-if="isAdminView" class="flex justify-between gap-2">
-        <dt class="text-slate-400">Cliente</dt>
-        <dd class="font-mono text-xs text-slate-500 truncate max-w-[180px]">
-          {{ reservation.userId }}
-        </dd>
-      </div>
+      <template v-if="isAdminView">
+        <div class="border-t border-slate-100 mt-1 pt-1 flex justify-between gap-2">
+          <dt class="text-slate-400">Cliente</dt>
+          <dd class="text-right font-medium">{{ reservation.clientName || '—' }}</dd>
+        </div>
+        <div v-if="reservation.clientEmail" class="flex justify-between gap-2">
+          <dt class="text-slate-400">E-mail</dt>
+          <dd class="text-right text-xs truncate max-w-[180px]">{{ reservation.clientEmail }}</dd>
+        </div>
+        <div v-if="reservation.clientPhone" class="flex justify-between gap-2">
+          <dt class="text-slate-400">Telefone</dt>
+          <dd>{{ reservation.clientPhone }}</dd>
+        </div>
+        <div v-if="reservation.clientCpf" class="flex justify-between gap-2">
+          <dt class="text-slate-400">CPF</dt>
+          <dd>{{ reservation.clientCpf }}</dd>
+        </div>
+      </template>
     </dl>
 
     <footer

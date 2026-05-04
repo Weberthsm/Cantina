@@ -179,6 +179,7 @@ const ReservationService = {
       date,
       mealType: payload.mealType,
       quantity,
+      deliveryAddress: user.address,
       status: config.reservationStatus.ACTIVE,
       createdAt: new Date().toISOString(),
       cancelledAt: null,
@@ -197,7 +198,16 @@ const ReservationService = {
   list(user, { from, to, includeAll = false } = {}) {
     let items;
     if (includeAll && user.role === config.roles.ADMIN) {
-      items = ReservationModel.findAll();
+      items = ReservationModel.findAll().map((r) => {
+        const client = UserModel.findById(r.userId);
+        return {
+          ...r,
+          clientName: client ? client.name : null,
+          clientPhone: client ? client.phone : null,
+          clientCpf: client ? client.cpf : null,
+          clientEmail: client ? client.email : null,
+        };
+      });
     } else {
       items = ReservationModel.findByUser(user.id);
     }
@@ -378,10 +388,25 @@ const ReservationService = {
   },
 
   cancellationHistory(adminUser, reservationId) {
-    if (reservationId) {
-      return HistoryModel.findByReservation(reservationId);
-    }
-    return HistoryModel.findAll();
+    const entries = reservationId
+      ? HistoryModel.findByReservation(reservationId)
+      : HistoryModel.findAll();
+
+    return entries.map((h) => {
+      const reservation = ReservationModel.findById(h.reservationId);
+      const client = reservation ? UserModel.findById(reservation.userId) : null;
+      const cancelledByUser = UserModel.findById(h.cancelledBy);
+      return {
+        ...h,
+        clientName: client ? client.name : null,
+        clientEmail: client ? client.email : null,
+        reservationDate: reservation ? reservation.date : null,
+        reservationMealType: reservation ? reservation.mealType : null,
+        reservationQuantity: reservation ? (reservation.quantity || 1) : null,
+        reservationDeliveryAddress: reservation ? reservation.deliveryAddress : null,
+        cancelledByName: cancelledByUser ? cancelledByUser.name : null,
+      };
+    });
   },
 
   /**

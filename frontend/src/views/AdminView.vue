@@ -196,7 +196,9 @@ function fmtDateTime(iso) {
         <table class="min-w-full text-sm">
           <thead class="bg-slate-50 text-slate-600">
             <tr>
-              <th class="text-left px-4 py-3 font-medium">Reserva</th>
+              <th class="text-left px-4 py-3 font-medium">Cliente</th>
+              <th class="text-left px-4 py-3 font-medium">Pedido</th>
+              <th class="text-left px-4 py-3 font-medium">Endereço</th>
               <th class="text-left px-4 py-3 font-medium">Quem cancelou</th>
               <th class="text-left px-4 py-3 font-medium">Motivo</th>
               <th class="text-left px-4 py-3 font-medium">Quando</th>
@@ -204,8 +206,24 @@ function fmtDateTime(iso) {
           </thead>
           <tbody class="divide-y divide-slate-100">
             <tr v-for="h in history" :key="h.id">
-              <td class="px-4 py-3 font-mono text-xs text-slate-500">
-                {{ h.reservationId.slice(0, 8) }}…
+              <td class="px-4 py-3">
+                <p class="font-medium text-slate-800">{{ h.clientName || '—' }}</p>
+                <p v-if="h.clientEmail" class="text-xs text-slate-400">{{ h.clientEmail }}</p>
+              </td>
+              <td class="px-4 py-3">
+                <p v-if="h.reservationDate">
+                  {{ h.reservationDate.split('-').reverse().join('/') }}
+                  — {{ h.reservationMealType === 'almoco' ? 'Almoço' : h.reservationMealType === 'jantar' ? 'Jantar' : h.reservationMealType }}
+                </p>
+                <p v-if="h.reservationQuantity" class="text-xs text-slate-500">
+                  {{ h.reservationQuantity }} marmita{{ h.reservationQuantity > 1 ? 's' : '' }}
+                </p>
+                <p v-if="!h.reservationDate" class="font-mono text-xs text-slate-400">
+                  {{ h.reservationId.slice(0, 8) }}…
+                </p>
+              </td>
+              <td class="px-4 py-3 text-slate-600 max-w-[200px]">
+                {{ h.reservationDeliveryAddress || '—' }}
               </td>
               <td class="px-4 py-3">
                 <span class="badge" :class="
@@ -215,9 +233,10 @@ function fmtDateTime(iso) {
                 ">
                   {{ h.cancelledByRole === 'admin' ? 'Admin' : 'Cliente' }}
                 </span>
+                <p v-if="h.cancelledByName" class="text-xs text-slate-400 mt-0.5">{{ h.cancelledByName }}</p>
               </td>
               <td class="px-4 py-3">{{ h.reason }}</td>
-              <td class="px-4 py-3 text-slate-500">{{ fmtDateTime(h.cancelledAt) }}</td>
+              <td class="px-4 py-3 text-slate-500 whitespace-nowrap">{{ fmtDateTime(h.cancelledAt) }}</td>
             </tr>
           </tbody>
         </table>
